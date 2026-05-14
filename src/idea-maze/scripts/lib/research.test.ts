@@ -20,25 +20,25 @@ vi.mock('./review.ts', () => ({
 }));
 
 describe('researchOpportunity', () => {
-  let groupDir: string;
+  let ideaMazeHome: string;
 
   beforeEach(() => {
-    groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-research-'));
-    fs.mkdirSync(path.join(groupDir, 'data'), { recursive: true });
-    process.env.WORKSPACE_GROUP = groupDir;
+    ideaMazeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-research-'));
+    fs.mkdirSync(path.join(ideaMazeHome, 'data'), { recursive: true });
+    process.env.IDEA_MAZE_HOME = ideaMazeHome;
     vi.resetModules();
     mocks.generateResearchJson.mockReset();
     mocks.publishResearchArtifact.mockReset();
     mocks.publishResearchArtifact.mockReturnValue({
-      path: path.join(groupDir, 'data', 'artifacts', 'finance-ops.md'),
+      path: path.join(ideaMazeHome, 'data', 'artifacts', 'finance-ops.md'),
     });
   });
 
   afterEach(async () => {
     const { closeDb } = await import('./db.ts');
     closeDb();
-    delete process.env.WORKSPACE_GROUP;
-    fs.rmSync(groupDir, { recursive: true, force: true });
+    delete process.env.IDEA_MAZE_HOME;
+    fs.rmSync(ideaMazeHome, { recursive: true, force: true });
   });
 
   it('marks the run as error when artifact publication fails after the run starts', async () => {

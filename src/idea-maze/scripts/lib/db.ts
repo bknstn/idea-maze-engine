@@ -1,9 +1,6 @@
 import Database from 'better-sqlite3';
-import { resolve } from 'node:path';
 
-const GROUP_DIR =
-  process.env.WORKSPACE_GROUP ?? resolve(import.meta.dirname, '..', '..');
-const DB_PATH = resolve(GROUP_DIR, 'data', 'lab.db');
+import { DB_PATH } from './paths.ts';
 
 let instance: Database.Database | null = null;
 

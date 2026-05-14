@@ -1,15 +1,12 @@
 # Idea Maze Engine
 
-CLI-first product discovery pipeline operated by Hermes.
+CLI-first product discovery pipeline.
 
-This repo contains the Idea Maze engine that was migrated out of
-`idea-maze-claw`. It intentionally keeps the current
-`groups/idea-maze/scripts` layout during the cutover so existing Hermes
-commands continue to work through the compatibility shim.
+Source code lives under `src/idea-maze/scripts`.
 
-## Hermes CLI Contract
+## CLI Contract
 
-Hermes should call these stable commands:
+Use these stable commands:
 
 ```bash
 npm run idea:status -- --json
@@ -36,13 +33,13 @@ npm run idea:process
 Runtime state lives in:
 
 ```text
-groups/idea-maze/data/lab.db
-groups/idea-maze/data/raw/
-groups/idea-maze/data/artifacts/
+data/lab.db
+data/raw/
+data/artifacts/
 ```
 
-These files are intentionally ignored by git. Move them through deployment or
-backup tooling, not normal source commits.
+These files are intentionally ignored by git. Set `IDEA_MAZE_HOME` to store
+runtime state somewhere else.
 
 ## Development
 

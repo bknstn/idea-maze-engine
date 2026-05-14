@@ -9,10 +9,10 @@
 import { readdirSync, statSync, unlinkSync, rmdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { getDb, closeDb } from "./lib/db.ts";
+import { DATA_DIR } from "./lib/paths.ts";
 import { initSchema } from "./lib/schema.ts";
 
-const GROUP_DIR = process.env.WORKSPACE_GROUP ?? "/workspace/group";
-const RAW_DIR = resolve(GROUP_DIR, "data", "raw");
+const RAW_DIR = resolve(DATA_DIR, "raw");
 const DEFAULT_RETENTION_DAYS = 30;
 
 function walkFiles(dir: string): string[] {

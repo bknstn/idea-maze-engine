@@ -5,20 +5,20 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("refresh-opportunities", () => {
-  let groupDir: string;
+  let ideaMazeHome: string;
 
   beforeEach(() => {
-    groupDir = fs.mkdtempSync(path.join(os.tmpdir(), "idea-maze-refresh-"));
-    fs.mkdirSync(path.join(groupDir, "data"), { recursive: true });
-    process.env.WORKSPACE_GROUP = groupDir;
+    ideaMazeHome = fs.mkdtempSync(path.join(os.tmpdir(), "idea-maze-refresh-"));
+    fs.mkdirSync(path.join(ideaMazeHome, "data"), { recursive: true });
+    process.env.IDEA_MAZE_HOME = ideaMazeHome;
     vi.resetModules();
   });
 
   afterEach(async () => {
     const { closeDb } = await import("./lib/db.ts");
     closeDb();
-    delete process.env.WORKSPACE_GROUP;
-    fs.rmSync(groupDir, { recursive: true, force: true });
+    delete process.env.IDEA_MAZE_HOME;
+    fs.rmSync(ideaMazeHome, { recursive: true, force: true });
   });
 
   it("archives low-score clusters instead of dropping them entirely", async () => {

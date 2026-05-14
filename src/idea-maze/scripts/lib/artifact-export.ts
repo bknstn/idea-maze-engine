@@ -2,10 +2,10 @@ import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
 import type Database from 'better-sqlite3';
 
+import { IDEA_MAZE_HOME } from './paths.ts';
 import { recordRunEvent } from './run-events.ts';
 
-const GROUP_DIR = process.env.WORKSPACE_GROUP ?? '/workspace/group';
-const IPC_DIR = process.env.WORKSPACE_IPC ?? '/workspace/ipc';
+const IPC_DIR = process.env.IDEA_MAZE_IPC ?? resolve(IDEA_MAZE_HOME, 'ipc');
 const ARTIFACT_SOURCE_PREFIX = 'data/artifacts';
 
 export type GitHubExportQueueStatus = 'disabled' | 'queued';
@@ -25,7 +25,7 @@ export function artifactSourceRelativePath(
 }
 
 export function resolveArtifactPath(relativePath: string): string {
-  return resolve(GROUP_DIR, ...relativePath.split('/'));
+  return resolve(IDEA_MAZE_HOME, ...relativePath.split('/'));
 }
 
 function writeIpcTaskFile(payload: Record<string, unknown>): boolean {

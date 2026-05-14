@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { DATA_DIR } from "./paths.ts";
 import { upsertSourceItem, type SourceItemRow, type UpsertSourceItem } from "./queries.ts";
 
-const GROUP_DIR = process.env.WORKSPACE_GROUP ?? "/workspace/group";
 const TAVILY_SEARCH_API = "https://api.tavily.com/search";
 const MAX_QUERIES = 3;
 const MAX_RESULTS_PER_QUERY = 5;
@@ -142,7 +142,7 @@ export function rawPathForSearch(runId: number, query: string, timestamp: Date):
   const y = timestamp.getUTCFullYear();
   const m = String(timestamp.getUTCMonth() + 1).padStart(2, "0");
   const d = String(timestamp.getUTCDate()).padStart(2, "0");
-  return resolve(GROUP_DIR, "data", "raw", "search", String(y), m, d, `${runId}_${slug}.json`);
+  return resolve(DATA_DIR, "raw", "search", String(y), m, d, `${runId}_${slug}.json`);
 }
 
 export function toSearchSourceItem(args: {

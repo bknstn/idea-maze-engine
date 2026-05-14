@@ -6,24 +6,22 @@
  */
 
 import { mkdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { getDb, closeDb } from "./lib/db.ts";
+import { DATA_DIR } from "./lib/paths.ts";
 import { initSchema } from "./lib/schema.ts";
-
-const GROUP_DIR = process.env.WORKSPACE_GROUP ?? "/workspace/group";
 
 // Ensure data directories exist
 const dirs = [
-  "data",
-  "data/raw/gmail",
-  "data/raw/telegram",
-  "data/raw/reddit",
-  "data/raw/search",
-  "data/artifacts",
+  DATA_DIR,
+  `${DATA_DIR}/raw/gmail`,
+  `${DATA_DIR}/raw/telegram`,
+  `${DATA_DIR}/raw/reddit`,
+  `${DATA_DIR}/raw/search`,
+  `${DATA_DIR}/artifacts`,
 ];
 
 for (const dir of dirs) {
-  mkdirSync(resolve(GROUP_DIR, dir), { recursive: true });
+  mkdirSync(dir, { recursive: true });
 }
 
 // Initialize database

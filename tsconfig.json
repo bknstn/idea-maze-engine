@@ -12,6 +12,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["groups/idea-maze/scripts/**/*.ts"],
+  "include": ["src/idea-maze/scripts/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

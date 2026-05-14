@@ -6,24 +6,24 @@ import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('initSchema migrations', () => {
-  let groupDir: string;
+  let ideaMazeHome: string;
 
   beforeEach(() => {
-    groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-schema-'));
-    fs.mkdirSync(path.join(groupDir, 'data'), { recursive: true });
-    process.env.WORKSPACE_GROUP = groupDir;
+    ideaMazeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-schema-'));
+    fs.mkdirSync(path.join(ideaMazeHome, 'data'), { recursive: true });
+    process.env.IDEA_MAZE_HOME = ideaMazeHome;
     vi.resetModules();
   });
 
   afterEach(async () => {
     const { closeDb } = await import('./db.ts');
     closeDb();
-    delete process.env.WORKSPACE_GROUP;
-    fs.rmSync(groupDir, { recursive: true, force: true });
+    delete process.env.IDEA_MAZE_HOME;
+    fs.rmSync(ideaMazeHome, { recursive: true, force: true });
   });
 
   it('adds new opportunity columns and backfills lifecycle/score state on old databases', async () => {
-    const dbPath = path.join(groupDir, 'data', 'lab.db');
+    const dbPath = path.join(ideaMazeHome, 'data', 'lab.db');
     const rawDb = new Database(dbPath);
     rawDb.exec(`
       CREATE TABLE opportunities (
