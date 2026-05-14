@@ -1,0 +1,11 @@
+node_modules/
+dist/
+
+# Runtime pipeline state. Keep local/VPS data out of git.
+groups/idea-maze/data/**/*.db
+groups/idea-maze/data/**/*.db-*
+groups/idea-maze/data/raw/
+groups/idea-maze/data/artifacts/
+groups/idea-maze/data/artifacts-repo/
+
+.DS_Store
