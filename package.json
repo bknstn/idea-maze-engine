@@ -1,25 +1,25 @@
 {
   "name": "idea-maze-engine",
   "version": "0.1.0",
-  "description": "CLI-first Idea Maze product discovery pipeline for Hermes orchestration.",
+  "description": "CLI-first Idea Maze product discovery pipeline.",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "idea:status": "tsx groups/idea-maze/scripts/pipeline-status.ts",
-    "idea:run": "tsx groups/idea-maze/scripts/run-pipeline.ts",
-    "idea:ingest:reddit": "tsx groups/idea-maze/scripts/ingest-reddit.ts",
-    "idea:ingest:gmail": "tsx groups/idea-maze/scripts/ingest-gmail.ts",
-    "idea:ingest:telegram": "tsx groups/idea-maze/scripts/ingest-telegram.ts",
-    "idea:extract": "tsx groups/idea-maze/scripts/extract-insights.ts",
-    "idea:refresh": "tsx groups/idea-maze/scripts/refresh-opportunities.ts",
-    "idea:process": "tsx groups/idea-maze/scripts/process-opportunities.ts",
-    "idea:latest": "tsx groups/idea-maze/scripts/latest-opportunities.ts",
-    "idea:explain": "tsx groups/idea-maze/scripts/explain-opportunity.ts",
-    "idea:research": "tsx groups/idea-maze/scripts/research-opportunity.ts",
-    "idea:artifacts": "tsx groups/idea-maze/scripts/list-artifacts.ts"
+    "idea:status": "tsx src/idea-maze/scripts/pipeline-status.ts",
+    "idea:run": "tsx src/idea-maze/scripts/run-pipeline.ts",
+    "idea:ingest:reddit": "tsx src/idea-maze/scripts/ingest-reddit.ts",
+    "idea:ingest:gmail": "tsx src/idea-maze/scripts/ingest-gmail.ts",
+    "idea:ingest:telegram": "tsx src/idea-maze/scripts/ingest-telegram.ts",
+    "idea:extract": "tsx src/idea-maze/scripts/extract-insights.ts",
+    "idea:refresh": "tsx src/idea-maze/scripts/refresh-opportunities.ts",
+    "idea:process": "tsx src/idea-maze/scripts/process-opportunities.ts",
+    "idea:latest": "tsx src/idea-maze/scripts/latest-opportunities.ts",
+    "idea:explain": "tsx src/idea-maze/scripts/explain-opportunity.ts",
+    "idea:research": "tsx src/idea-maze/scripts/research-opportunity.ts",
+    "idea:artifacts": "tsx src/idea-maze/scripts/list-artifacts.ts"
   },
   "dependencies": {
     "better-sqlite3": "11.10.0"

@@ -5,17 +5,17 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('artifact publication flow', () => {
-  let groupDir: string;
+  let ideaMazeHome: string;
   let ipcDir: string;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-18T12:00:00.000Z'));
-    groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-publication-'));
+    ideaMazeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-publication-'));
     ipcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-ipc-'));
-    fs.mkdirSync(path.join(groupDir, 'data'), { recursive: true });
-    process.env.WORKSPACE_GROUP = groupDir;
-    process.env.WORKSPACE_IPC = ipcDir;
+    fs.mkdirSync(path.join(ideaMazeHome, 'data'), { recursive: true });
+    process.env.IDEA_MAZE_HOME = ideaMazeHome;
+    process.env.IDEA_MAZE_IPC = ipcDir;
     delete process.env.IDEA_MAZE_ARTIFACTS_REPO_BRANCH;
     delete process.env.IDEA_MAZE_ARTIFACTS_REPO_URL;
     vi.resetModules();
@@ -27,9 +27,9 @@ describe('artifact publication flow', () => {
     vi.useRealTimers();
     delete process.env.IDEA_MAZE_ARTIFACTS_REPO_BRANCH;
     delete process.env.IDEA_MAZE_ARTIFACTS_REPO_URL;
-    delete process.env.WORKSPACE_GROUP;
-    delete process.env.WORKSPACE_IPC;
-    fs.rmSync(groupDir, { recursive: true, force: true });
+    delete process.env.IDEA_MAZE_HOME;
+    delete process.env.IDEA_MAZE_IPC;
+    fs.rmSync(ideaMazeHome, { recursive: true, force: true });
     fs.rmSync(ipcDir, { recursive: true, force: true });
   });
 

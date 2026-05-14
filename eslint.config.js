@@ -4,8 +4,8 @@ import tseslint from 'typescript-eslint'
 import noCatchAll from 'eslint-plugin-no-catch-all'
 
 export default [
-  { ignores: ['node_modules/', 'dist/', 'groups/idea-maze/data/'] },
-  { files: ['groups/idea-maze/scripts/**/*.{js,ts}'] },
+  { ignores: ['node_modules/', 'dist/', 'data/'] },
+  { files: ['src/idea-maze/scripts/**/*.{js,ts}'] },
   { languageOptions: { globals: globals.node } },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,

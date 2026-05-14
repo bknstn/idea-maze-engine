@@ -14,12 +14,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { getDb, closeDb } from "./lib/db.ts";
+import { DATA_DIR } from "./lib/paths.ts";
 import { initSchema } from "./lib/schema.ts";
 import { scoreSourceItem } from "./lib/scoring.ts";
 import { upsertSourceItem, getAppState, setAppState } from "./lib/queries.ts";
 
-const GROUP_DIR = process.env.WORKSPACE_GROUP ?? "/workspace/group";
-const USER_AGENT = "idea-maze-claw/1.0";
+const USER_AGENT = "idea-maze-engine/1.0";
 const DEFAULT_HOURS = 24;
 const DEFAULT_MAX_POSTS = 50;
 
@@ -41,7 +41,7 @@ function rawPath(subreddit: string, postId: string, timestamp: Date): string {
   const y = timestamp.getUTCFullYear();
   const m = String(timestamp.getUTCMonth() + 1).padStart(2, "0");
   const d = String(timestamp.getUTCDate()).padStart(2, "0");
-  return resolve(GROUP_DIR, "data", "raw", "reddit", String(y), m, d, `${safe}_${postId}.json`);
+  return resolve(DATA_DIR, "raw", "reddit", String(y), m, d, `${safe}_${postId}.json`);
 }
 
 // --- Atom/RSS fallback ---

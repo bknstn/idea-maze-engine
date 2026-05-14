@@ -5,22 +5,22 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('observability reports', () => {
-  let groupDir: string;
+  let ideaMazeHome: string;
 
   beforeEach(() => {
-    groupDir = fs.mkdtempSync(
+    ideaMazeHome = fs.mkdtempSync(
       path.join(os.tmpdir(), 'idea-maze-observability-'),
     );
-    fs.mkdirSync(path.join(groupDir, 'data'), { recursive: true });
-    process.env.WORKSPACE_GROUP = groupDir;
+    fs.mkdirSync(path.join(ideaMazeHome, 'data'), { recursive: true });
+    process.env.IDEA_MAZE_HOME = ideaMazeHome;
     vi.resetModules();
   });
 
   afterEach(async () => {
     const { closeDb } = await import('./db.ts');
     closeDb();
-    delete process.env.WORKSPACE_GROUP;
-    fs.rmSync(groupDir, { recursive: true, force: true });
+    delete process.env.IDEA_MAZE_HOME;
+    fs.rmSync(ideaMazeHome, { recursive: true, force: true });
   });
 
   it('summarizes the latest pipeline run and warnings', async () => {

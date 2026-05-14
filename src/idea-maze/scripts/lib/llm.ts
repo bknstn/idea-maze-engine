@@ -1,5 +1,5 @@
 /**
- * Minimal Anthropic API client for running inside NanoClaw containers.
+ * Minimal Anthropic API client.
  *
  * Uses the ANTHROPIC_API_KEY environment variable (injected by OneCLI
  * or set directly). Falls back gracefully when no key is available.
