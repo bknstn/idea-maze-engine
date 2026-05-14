@@ -2,6 +2,7 @@ node_modules/
 dist/
 
 # Runtime pipeline state. Keep local/VPS data out of git.
+data
 data/**/*.db
 data/**/*.db-*
 data/raw/
