@@ -2,14 +2,14 @@
  * Insight extraction — extracts typed insights from unprocessed source items.
  *
  * Two-tier strategy:
- * 1. LLM extraction (primary) — uses Claude via Anthropic API
+ * 1. LLM extraction (primary) — uses configured LLM provider
  * 2. Heuristic fallback — keyword matching when LLM unavailable
  *
  * Usage: tsx extract-insights.ts [--limit N]
  */
 
 import { getDb, closeDb } from "./lib/db.ts";
-import { EXTRACTION_BATCH_SIZE, EXTRACTION_MODEL, generateBatchJson, isLlmConfigured } from "./lib/llm.ts";
+import { EXTRACTION_BATCH_SIZE, generateBatchJson, getExtractionModel, getMissingLlmReason, isLlmConfigured } from "./lib/llm.ts";
 import { HARVEST_PROMPT_NAME, HARVEST_PROMPT_VERSION, HARVEST_SYSTEM_PROMPT, buildBatchHarvestUserPrompt } from "./lib/prompts.ts";
 import { classifyFailure, withStageRunContext } from "./lib/run-events.ts";
 import { initSchema } from "./lib/schema.ts";
@@ -227,6 +227,7 @@ async function main() {
     const PARALLEL_BATCHES = 3;
     console.log(`Processing ${items.length} unprocessed source items...`);
     const useLlm = isLlmConfigured();
+    const extractionModel = getExtractionModel();
     console.log(`Strategy: ${useLlm ? `LLM batch (size=${EXTRACTION_BATCH_SIZE}, parallel=${PARALLEL_BATCHES})` : "heuristic only"}`);
 
     const insertInsight = db.prepare(`
@@ -258,7 +259,7 @@ async function main() {
                   fallback: "heuristic",
                   failure_class: classifyFailure(err),
                   item_ids: batch.map((item) => item.id),
-                  model: EXTRACTION_MODEL,
+                  model: extractionModel,
                   prompt_name: HARVEST_PROMPT_NAME,
                   prompt_version: HARVEST_PROMPT_VERSION,
                 },
@@ -287,7 +288,7 @@ async function main() {
                 payload: {
                   errors: result.errors,
                   invalid_item_ids: invalidItemIds,
-                  model: EXTRACTION_MODEL,
+                  model: extractionModel,
                   prompt_name: HARVEST_PROMPT_NAME,
                   prompt_version: HARVEST_PROMPT_VERSION,
                   validation_status: "partial_fallback",
@@ -325,7 +326,7 @@ async function main() {
         eventType: "fallback.used",
         payload: {
           fallback: "heuristic_only",
-          reason: "ANTHROPIC_API_KEY missing",
+          reason: getMissingLlmReason(),
           validation_status: "not_attempted",
         },
         status: "warning",
@@ -351,7 +352,7 @@ async function main() {
     stageRun.finish("completed", `Created ${totalCreated} insights from ${items.length} source items.`, {
       created_insights: totalCreated,
       fallback_items: totalFallbackItems,
-      model: useLlm ? EXTRACTION_MODEL : null,
+      model: extractionModel,
       processed_items: items.length,
       prompt_name: HARVEST_PROMPT_NAME,
       prompt_version: HARVEST_PROMPT_VERSION,

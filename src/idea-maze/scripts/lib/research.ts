@@ -3,8 +3,9 @@ import type Database from 'better-sqlite3';
 import { closeDb, getDb } from './db.ts';
 import {
   generateResearchJson,
+  getMissingLlmReason,
+  getResearchModel,
   isLlmConfigured,
-  RESEARCH_MODEL,
 } from './llm.ts';
 import { setOpportunityLifecycle } from './opportunity-state.ts';
 import {
@@ -146,12 +147,13 @@ function buildTemplateDraft(
 }
 
 function toPromptMetadata() {
+  const researchModel = getResearchModel();
   return {
-    model: isLlmConfigured() ? RESEARCH_MODEL : null,
+    model: researchModel,
     prompt_name: RESEARCH_PROMPT_NAME,
     prompt_version: RESEARCH_PROMPT_VERSION,
     validation_errors: [] as string[],
-    validation_status: isLlmConfigured() ? 'pending' : 'not_attempted',
+    validation_status: researchModel ? 'pending' : 'not_attempted',
   };
 }
 
@@ -446,7 +448,7 @@ export async function researchOpportunity(
         draftBody = buildTemplateDraft(opp, sourceItems, searchItems);
       }
     } else {
-      logger.log('No ANTHROPIC_API_KEY — using template draft.');
+      logger.log('No configured LLM provider — using template draft.');
       recordRunEvent(db, {
         actor: requestedBy,
         eventType: 'fallback.used',
@@ -454,7 +456,7 @@ export async function researchOpportunity(
         payload: {
           ...promptMetadata,
           fallback: 'template_draft',
-          reason: 'ANTHROPIC_API_KEY missing',
+          reason: getMissingLlmReason(),
         },
         runId,
         stage: 'research',
