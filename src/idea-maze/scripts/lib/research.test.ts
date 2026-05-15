@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('./llm.ts', () => ({
   RESEARCH_MODEL: 'claude-sonnet-4-6',
   generateResearchJson: mocks.generateResearchJson,
+  getMissingLlmReason: () =>
+    'No configured LLM provider (set ANTHROPIC_API_KEY or OPENAI_API_KEY)',
+  getResearchModel: () => 'claude-sonnet-4-6',
   isLlmConfigured: () => true,
 }));
 
