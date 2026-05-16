@@ -94,9 +94,17 @@ export function setOpportunityLifecycle(
     throw new Error(`Opportunity #${opportunityId} not found.`);
   }
 
-  const nextStatus = options.status ?? opportunity.status;
+  let nextLifecycleStage = lifecycleStage;
+  let nextStatus = options.status ?? opportunity.status;
+  if (
+    ['approved', 'rejected'].includes(opportunity.lifecycle_stage ?? '') &&
+    lifecycleStage !== opportunity.lifecycle_stage
+  ) {
+    nextLifecycleStage = opportunity.lifecycle_stage as OpportunityLifecycleStage;
+    nextStatus = opportunity.lifecycle_stage === 'rejected' ? 'archived' : 'active';
+  }
   const metadataPatch =
-    lifecycleStage === "archived" && options.payload?.archive_reason
+    nextLifecycleStage === "archived" && options.payload?.archive_reason
       ? { archive_reason: options.payload.archive_reason }
       : {};
 
@@ -108,14 +116,14 @@ export function setOpportunityLifecycle(
         updated_at_utc = ?
     WHERE id = ?
   `).run(
-    lifecycleStage,
+    nextLifecycleStage,
     nextStatus,
     mergeOpportunityMetadata(opportunity.metadata_json, metadataPatch),
     now,
     opportunityId,
   );
 
-  if (opportunity.lifecycle_stage !== lifecycleStage || opportunity.status !== nextStatus) {
+  if (opportunity.lifecycle_stage !== nextLifecycleStage || opportunity.status !== nextStatus) {
     recordRunEvent(db, {
       actor: options.actor ?? "system",
       eventType: "lifecycle.transition",
@@ -125,12 +133,12 @@ export function setOpportunityLifecycle(
         payload: options.payload ?? {},
         status_from: opportunity.status,
         status_to: nextStatus,
-        to: lifecycleStage,
+        to: nextLifecycleStage,
       },
       runId: options.runId ?? null,
       stage: "lifecycle",
       status: "info",
-      summary: options.summary ?? `Opportunity moved to ${lifecycleStage}`,
+      summary: options.summary ?? `Opportunity moved to ${nextLifecycleStage}`,
     });
   }
 }

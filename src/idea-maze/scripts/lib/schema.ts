@@ -424,14 +424,14 @@ function backfillOpportunityState(db: Database.Database): void {
     UPDATE opportunities
     SET lifecycle_stage = 'archived'
     WHERE status = 'archived'
-	      AND lifecycle_stage NOT IN ('artifact', 'researching')
-	  `);
+      AND lifecycle_stage NOT IN ('artifact', 'researching', 'review_gate', 'approved', 'rejected')
+  `);
 
   db.exec(`
     UPDATE opportunities
     SET lifecycle_stage = 'artifact'
-    WHERE lifecycle_stage = 'approved'
-       OR EXISTS (
+    WHERE lifecycle_stage NOT IN ('approved', 'rejected')
+       AND EXISTS (
          SELECT 1 FROM artifacts a
          WHERE a.opportunity_id = opportunities.id
        )
@@ -439,14 +439,7 @@ function backfillOpportunityState(db: Database.Database): void {
 
   db.exec(`
     UPDATE opportunities
-    SET lifecycle_stage = 'researching'
-    WHERE lifecycle_stage = 'review_gate'
-  `);
-
-  db.exec(`
-    UPDATE opportunities
-    SET lifecycle_stage = 'archived',
-        status = 'archived'
+    SET status = 'archived'
     WHERE lifecycle_stage = 'rejected'
   `);
 }

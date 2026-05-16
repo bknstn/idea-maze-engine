@@ -2,7 +2,7 @@
  * Auto-process scored opportunities after clustering.
  *
  * Buckets:
- * - 9-10: draft research and publish an artifact
+ * - 9-10: draft research and leave it at the review gate
  * - <9: skip and ignore it
  *
  * Usage: tsx process-opportunities.ts [--limit N] [--all]
@@ -15,7 +15,6 @@ import {
   classifyOpportunityScore,
 } from './lib/opportunity-policy.ts';
 import { researchOpportunity } from './lib/research.ts';
-import { publishResearchArtifact } from './lib/review.ts';
 import { withStageRunContext } from './lib/run-events.ts';
 import { initSchema } from './lib/schema.ts';
 
@@ -124,8 +123,8 @@ async function main() {
     );
 
     const summary = {
-      published_existing: 0,
-      published_new: 0,
+      review_gate_existing: 0,
+      review_gate_new: 0,
       deferred_due_to_budget: 0,
       ignored: ignoredLowScoreOpportunities,
       skipped_existing: 0,
@@ -153,15 +152,18 @@ async function main() {
       });
 
       if (opp.draft_run_id) {
-        const { path } = publishResearchArtifact(
-          db,
-          Number(opp.draft_run_id),
-          `Published by automated pipeline for score bucket ${policy.bucket}.`,
-        );
+        setOpportunityLifecycle(db, opp.id, 'review_gate', {
+          payload: {
+            draft_run_id: opp.draft_run_id,
+            score_bucket: policy.bucket,
+          },
+          runId: stageRun.runId,
+          summary: `Existing research draft #${opp.draft_run_id} is awaiting review.`,
+        });
         console.log(
-          `Published existing research draft #${opp.draft_run_id} for ${opp.slug}: ${path}`,
+          `Existing research draft #${opp.draft_run_id} for ${opp.slug} left at review gate.`,
         );
-        summary.published_existing++;
+        summary.review_gate_existing++;
         continue;
       }
 
@@ -186,23 +188,22 @@ async function main() {
       const result = await researchOpportunity(opp.slug, {
         db,
         logger: console,
-        publicationNotes: `Published by automated pipeline for score bucket ${policy.bucket}.`,
         requestedBy: 'system',
         runIdForEvents: stageRun.runId,
       });
 
-      if (!result.artifactPath) {
-        throw new Error(`Expected artifact publication for ${opp.slug}.`);
+      if (result.status !== 'review_gate') {
+        throw new Error(`Expected review gate draft for ${opp.slug}.`);
       }
-      summary.published_new++;
+      summary.review_gate_new++;
     }
 
     console.log('\nOpportunity processing summary:');
     console.log(
-      `  published existing drafts:          ${summary.published_existing}`,
+      `  existing drafts at review gate:     ${summary.review_gate_existing}`,
     );
     console.log(
-      `  published new research artifacts:   ${summary.published_new}`,
+      `  new drafts at review gate:          ${summary.review_gate_new}`,
     );
     console.log(
       `  skipped existing history:           ${summary.skipped_existing}`,

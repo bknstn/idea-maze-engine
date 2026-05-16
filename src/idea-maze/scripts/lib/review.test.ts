@@ -79,6 +79,10 @@ describe('artifact publication flow', () => {
     `,
     ).run(
       JSON.stringify({
+        prompt_metadata: {
+          model: 'claude-sonnet-4-6',
+          validation_status: 'valid',
+        },
         draft: {
           opportunity_slug: 'finance-ops',
           thesis: 'Invoice reconciliation is painful.',
