@@ -35,6 +35,92 @@ export interface ResearchDraft {
   source_refs: number[];
 }
 
+const QUALITY_NOISE_TOKENS = new Set([
+  'amp',
+  'code',
+  'com',
+  'comments',
+  'href',
+  'html',
+  'http',
+  'https',
+  'pre',
+  'quot',
+  'reddit',
+  'span',
+  'strong',
+  'style',
+]);
+
+function normalizeQualityText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function qualityIssues(run: any, draft: ResearchDraft): string[] {
+  const issues: string[] = [];
+  let metadata: any = {};
+  try {
+    metadata = JSON.parse(run.metadata_json);
+  } catch {
+    issues.push('invalid_run_metadata');
+  }
+
+  const promptMetadata = metadata.prompt_metadata ?? {};
+  if (promptMetadata.validation_status !== 'valid') {
+    issues.push(`prompt_validation_${promptMetadata.validation_status ?? 'missing'}`);
+  }
+  if (!promptMetadata.model) {
+    issues.push('missing_model');
+  }
+
+  const slugTokens = draft.opportunity_slug.split(/[^a-z0-9]+/i).filter(Boolean);
+  if (
+    slugTokens.length > 0 &&
+    slugTokens.every((token) => QUALITY_NOISE_TOKENS.has(token.toLowerCase()))
+  ) {
+    issues.push('noise_slug');
+  }
+
+  const evidence = [
+    ...draft.evidence_from_inbox,
+    ...draft.evidence_from_telegram,
+    ...draft.evidence_from_reddit,
+    ...draft.external_market_check,
+  ];
+  if (!draft.source_refs.length) {
+    issues.push('missing_source_refs');
+  }
+  if (!evidence.some((item) => normalizeQualityText(item) !== 'none')) {
+    issues.push('missing_evidence');
+  }
+
+  const renderedDraft = normalizeQualityText(
+    [
+      draft.thesis,
+      draft.product_concept,
+      ...draft.mvp_scope,
+      ...draft.implementation_plan,
+      ...draft.distribution_plan,
+      ...draft.risks,
+      ...evidence,
+    ].join(' '),
+  );
+  if (renderedDraft.includes('insufficient signal')) {
+    issues.push('insufficient_signal');
+  }
+
+  return issues;
+}
+
+function assertPublishableDraft(run: any, draft: ResearchDraft): void {
+  const issues = qualityIssues(run, draft);
+  if (issues.length) {
+    throw new Error(
+      `Run #${run.id} failed research quality gate: ${issues.join(', ')}`,
+    );
+  }
+}
+
 function getRun(db: Database.Database, runId: number): any {
   const run = db.prepare('SELECT * FROM runs WHERE id = ?').get(runId) as any;
   if (!run) {
@@ -117,6 +203,7 @@ export function publishResearchArtifact(
   }
 
   const draft = getDraft(run, runId);
+  assertPublishableDraft(run, draft);
   const opportunityId = Number(run.target_id);
   if (
     !db.prepare('SELECT 1 FROM opportunities WHERE id = ?').get(opportunityId)

@@ -21,7 +21,7 @@ import {
   isSearchConfigured,
   type SearchEvidenceItem,
 } from './search.ts';
-import { publishResearchArtifact, type ResearchDraft } from './review.ts';
+import { type ResearchDraft } from './review.ts';
 import {
   type ValidatedResearchDraft,
   validateResearchDraft,
@@ -45,7 +45,7 @@ export interface ResearchOpportunityResult {
   opportunityId: number;
   opportunitySlug: string;
   runId: number;
-  status: 'published';
+  status: 'review_gate';
 }
 
 function slugify(value: string): string {
@@ -478,7 +478,7 @@ export async function researchOpportunity(
     };
 
     db.prepare(
-      "UPDATE runs SET status = 'draft_ready', metadata_json = ? WHERE id = ?",
+      "UPDATE runs SET status = 'review_gate', metadata_json = ? WHERE id = ?",
     ).run(
       JSON.stringify({
         draft,
@@ -505,25 +505,31 @@ export async function researchOpportunity(
       summary: `Research draft ready for ${opp.slug}.`,
     });
 
-    const { path } = publishResearchArtifact(db, runId, publicationNotes);
-    logger.log(`Research artifact published for run #${runId}.`);
-    logger.log(`Artifact written: ${path}`);
+    setOpportunityLifecycle(db, Number(opp.id), 'review_gate', {
+      actor: requestedBy,
+      payload: {
+        prompt_metadata: promptMetadata,
+        source_item_count: sourceItems.length,
+      },
+      runId,
+      summary: `Research draft ready for human review for ${opp.slug}.`,
+    });
+    logger.log(`Research draft ready for run #${runId}; awaiting review gate.`);
     emitParentEvent({
       actor: requestedBy,
-      eventType: 'research.artifact_published',
+      eventType: 'research.review_gate',
       opportunityId: Number(opp.id),
-      payload: { artifact_path: path, child_run_id: runId },
+      payload: { child_run_id: runId },
       stage: 'process-opportunities',
       status: 'ok',
-      summary: `Artifact published for ${opp.slug}.`,
+      summary: `Research draft ready for review for ${opp.slug}.`,
     });
 
     return {
-      artifactPath: path,
       opportunityId: Number(opp.id),
       opportunitySlug: opp.slug,
       runId,
-      status: 'published',
+      status: 'review_gate',
     };
   } catch (err) {
     if (runId !== null) {

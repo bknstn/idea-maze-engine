@@ -21,7 +21,47 @@ import { recomputeOpportunityScore } from './lib/taste.ts';
 
 // --- Helpers ---
 
+const HTML_NOISE_WORDS = new Set([
+  'amp',
+  'apos',
+  'blockquote',
+  'body',
+  'br',
+  'class',
+  'code',
+  'com',
+  'comments',
+  'div',
+  'gt',
+  'href',
+  'html',
+  'http',
+  'https',
+  'img',
+  'link',
+  'lt',
+  'nbsp',
+  'pre',
+  'quot',
+  'reddit',
+  'rel',
+  'span',
+  'src',
+  'strong',
+  'style',
+  'target',
+  'title',
+  'www',
+  'xml',
+]);
+
+const HUMAN_REVIEW_LIFECYCLE_STAGES = new Set<OpportunityLifecycleStage>([
+  'approved',
+  'rejected',
+]);
+
 const STOP_WORDS = new Set([
+  ...Array.from(HTML_NOISE_WORDS),
   // Articles, conjunctions, prepositions
   'a',
   'an',
@@ -204,12 +244,25 @@ const STOP_WORDS = new Set([
   'pricing',
 ]);
 
+function normalizeForKeywords(text: string): string {
+  return text
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/www\.\S+/gi, ' ')
+    .replace(/&(?:amp|lt|gt|quot|apos|nbsp);/gi, ' ')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/&#x[\da-f]+;/gi, ' ');
+}
+
 function topKeywords(texts: string[], limit = 2): string[] {
   const counts = new Map<string, number>();
   for (const text of texts) {
-    const tokens = text.toLowerCase().match(/[a-z][a-z0-9_-]{2,}/g) ?? [];
+    const tokens =
+      normalizeForKeywords(text).toLowerCase().match(/[a-z][a-z0-9_-]{2,}/g) ?? [];
     for (const token of tokens) {
-      if (!STOP_WORDS.has(token)) {
+      if (!STOP_WORDS.has(token) && !HTML_NOISE_WORDS.has(token)) {
         counts.set(token, (counts.get(token) ?? 0) + 1);
       }
     }
@@ -327,7 +380,7 @@ function main() {
       'SELECT 1 FROM artifacts WHERE opportunity_id = ? LIMIT 1',
     );
     const hasPublishedRun = db.prepare(
-      "SELECT 1 FROM runs WHERE target_id = ? AND status IN ('published', 'approved') LIMIT 1",
+      "SELECT 1 FROM runs WHERE target_id = ? AND status IN ('published', 'approved', 'rejected') LIMIT 1",
     );
     const hasOpenResearchRun = db.prepare(
       "SELECT 1 FROM runs WHERE target_id = ? AND status IN ('running', 'draft_ready', 'review_gate') LIMIT 1",
@@ -335,6 +388,7 @@ function main() {
 
     let archived = 0;
     let createdOrUpdated = 0;
+    let skippedNoisyClusters = 0;
 
     const MIN_INSIGHTS = 3;
     const filteredClusters = [...clusters.entries()].filter(
@@ -359,11 +413,23 @@ function main() {
         .map((i: any) => `${i.si_title ?? ''} ${i.si_text ?? ''} ${i.summary}`)
         .join(' ');
       const topWords = topKeywords([allText], 3);
+      if (topWords.length < 2) {
+        skippedNoisyClusters++;
+        console.log(
+          `  ${clusterKey}: skipped noisy/low-quality cluster (keywords=${
+            topWords.join(', ') || 'none'
+          }).`,
+        );
+        continue;
+      }
       const bigramLabel = topWords.slice(0, 2).join('-') || clusterKey;
       const title = bigramLabel
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (c: string) => c.toUpperCase());
       const slug = slugify(title);
+      const previousReviewState = db
+        .prepare('SELECT lifecycle_stage FROM opportunities WHERE slug = ?')
+        .get(slug) as { lifecycle_stage: OpportunityLifecycleStage | null } | undefined;
       const thesis = ranked[0].summary;
 
       const sourceScores = ranked.map((i: any) =>
@@ -464,19 +530,37 @@ function main() {
         hasOpenResearchRun.get(targetId),
       );
 
+      const priorHumanLifecycle =
+        previousReviewState?.lifecycle_stage ??
+        (opportunity.lifecycle_stage &&
+        HUMAN_REVIEW_LIFECYCLE_STAGES.has(opportunity.lifecycle_stage)
+          ? opportunity.lifecycle_stage
+          : undefined);
+      const reviewLifecycleIsSticky = Boolean(
+        priorHumanLifecycle &&
+          HUMAN_REVIEW_LIFECYCLE_STAGES.has(priorHumanLifecycle),
+      );
       const keepLifecycleForHistory =
         protectedHistory &&
         opportunity.lifecycle_stage &&
-        ['artifact', 'researching'].includes(opportunity.lifecycle_stage);
+        ['artifact', 'researching', 'review_gate'].includes(
+          opportunity.lifecycle_stage,
+        );
 
-      const nextLifecycle: OpportunityLifecycleStage =
-        policy.disposition === 'ignore'
+      const nextLifecycle: OpportunityLifecycleStage = reviewLifecycleIsSticky
+        ? priorHumanLifecycle!
+        : policy.disposition === 'ignore'
           ? keepLifecycleForHistory
             ? opportunity.lifecycle_stage!
             : 'archived'
           : 'scored';
-      const nextStatus =
-        policy.disposition === 'ignore' ? 'archived' : 'active';
+      const nextStatus = reviewLifecycleIsSticky
+        ? priorHumanLifecycle === 'rejected'
+          ? 'archived'
+          : 'active'
+        : policy.disposition === 'ignore'
+          ? 'archived'
+          : 'active';
 
       setOpportunityLifecycle(db, opportunity.id, nextLifecycle as any, {
         payload: {
@@ -538,6 +622,7 @@ function main() {
         archived,
         created_or_updated: createdOrUpdated,
         raw_clusters: clusters.size,
+        skipped_noisy_clusters: skippedNoisyClusters,
         scored_clusters: filteredClusters.length,
       },
     );
