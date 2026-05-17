@@ -199,4 +199,44 @@ describe('artifact publication flow', () => {
     expect(queuedEvent?.payload_json).toContain('"ipc_wakeup_sent":true');
     expect(taskFiles).toHaveLength(1);
   });
+
+  it('rejects artifact slugs that could escape the artifact directory', async () => {
+    const db = await seedPublishableRun();
+    db.prepare(
+      `
+      UPDATE runs
+      SET metadata_json = ?
+      WHERE id = 1
+    `,
+    ).run(
+      JSON.stringify({
+        prompt_metadata: {
+          model: 'claude-sonnet-4-6',
+          validation_status: 'valid',
+        },
+        draft: {
+          opportunity_slug: '../outside',
+          thesis: 'Invoice reconciliation is painful.',
+          evidence_from_inbox: ['None'],
+          evidence_from_telegram: ['None'],
+          evidence_from_reddit: ['Manual reconciliation keeps showing up.'],
+          external_market_check: ['None'],
+          product_concept: 'Finance ops workflow app',
+          mvp_scope: ['Core workflow'],
+          implementation_plan: ['Ship the narrow slice'],
+          distribution_plan: ['Finance ops communities'],
+          risks: ['Incumbents'],
+          source_refs: [1],
+        },
+      }),
+    );
+    const { publishResearchArtifact } = await import('./review.ts');
+
+    expect(() => publishResearchArtifact(db, 1)).toThrow(
+      'Invalid artifact slug',
+    );
+    expect(
+      fs.existsSync(path.join(ideaMazeHome, 'data', 'outside.md')),
+    ).toBe(false);
+  });
 });
