@@ -7,6 +7,7 @@ import { recordRunEvent } from './run-events.ts';
 
 const IPC_DIR = process.env.IDEA_MAZE_IPC ?? resolve(IDEA_MAZE_HOME, 'ipc');
 const ARTIFACT_SOURCE_PREFIX = 'data/artifacts';
+const ARTIFACT_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 export type GitHubExportQueueStatus = 'disabled' | 'queued';
 
@@ -18,6 +19,10 @@ export function artifactSourceRelativePath(
   slug: string,
   timestamp = new Date(),
 ): string {
+  if (!ARTIFACT_SLUG_PATTERN.test(slug)) {
+    throw new Error(`Invalid artifact slug: ${slug}`);
+  }
+
   const y = timestamp.getUTCFullYear();
   const m = String(timestamp.getUTCMonth() + 1).padStart(2, '0');
   const d = String(timestamp.getUTCDate()).padStart(2, '0');

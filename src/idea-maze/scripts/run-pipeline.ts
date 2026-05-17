@@ -9,7 +9,7 @@
  * Usage: tsx run-pipeline.ts
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { getDb, closeDb } from './lib/db.ts';
 import { hasFlag, writeJson } from './lib/cli.ts';
@@ -42,7 +42,8 @@ function runStage(
 ): StageResult {
   const start = Date.now();
   try {
-    const output = execSync(`cd "${SCRIPTS_DIR}" && tsx ${script}`, {
+    const output = execFileSync('tsx', [script], {
+      cwd: SCRIPTS_DIR,
       encoding: 'utf-8',
       env: {
         ...process.env,
@@ -57,7 +58,7 @@ function runStage(
       durationMs: Date.now() - start,
     };
   } catch (err: any) {
-    const output = err.stdout?.toString() ?? err.message;
+    const output = err.stdout?.toString() ?? err.stderr?.toString() ?? err.message;
     return {
       stage: name,
       ok: false,
