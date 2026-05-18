@@ -17,6 +17,18 @@ const RESEARCH_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 
 type LlmProvider = "anthropic" | "openai";
 
+class LlmApiError extends Error {
+  constructor(
+    message: string,
+    readonly provider: LlmProvider,
+    readonly status: number,
+    readonly body: string,
+  ) {
+    super(message);
+    this.name = "LlmApiError";
+  }
+}
+
 export function getConfiguredProvider(): LlmProvider | null {
   if (process.env.ANTHROPIC_API_KEY) return "anthropic";
   if (process.env.OPENAI_API_KEY) return "openai";
@@ -95,7 +107,12 @@ async function callAnthropicApi<T>(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Anthropic API ${res.status}: ${body}`);
+    throw new LlmApiError(
+      `Anthropic API ${res.status}: ${body}`,
+      "anthropic",
+      res.status,
+      body,
+    );
   }
 
   const data = (await res.json()) as any;
@@ -132,12 +149,24 @@ async function callOpenAiApi<T>(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`OpenAI API ${res.status}: ${body}`);
+    throw new LlmApiError(
+      `OpenAI API ${res.status}: ${body}`,
+      "openai",
+      res.status,
+      body,
+    );
   }
 
   const data = (await res.json()) as any;
   const text: string = data.choices?.[0]?.message?.content ?? "";
   return extractJson<T>(text);
+}
+
+function isRetryableApiError(error: unknown): error is LlmApiError {
+  return (
+    error instanceof LlmApiError &&
+    (error.status === 429 || error.status >= 500)
+  );
 }
 
 async function callApi<T>(
@@ -158,13 +187,26 @@ async function callApi<T>(
 
   try {
     if (provider === "anthropic") {
-      return await callAnthropicApi<T>(
-        model,
-        systemPrompt,
-        userPrompt,
-        maxTokens,
-        controller?.signal,
-      );
+      try {
+        return await callAnthropicApi<T>(
+          model,
+          systemPrompt,
+          userPrompt,
+          maxTokens,
+          controller?.signal,
+        );
+      } catch (err) {
+        if (process.env.OPENAI_API_KEY && isRetryableApiError(err)) {
+          return await callOpenAiApi<T>(
+            modelFor("openai", anthropicModel),
+            systemPrompt,
+            userPrompt,
+            maxTokens,
+            controller?.signal,
+          );
+        }
+        throw err;
+      }
     }
     return await callOpenAiApi<T>(
       model,

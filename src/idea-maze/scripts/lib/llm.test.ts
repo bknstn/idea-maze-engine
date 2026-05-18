@@ -84,6 +84,55 @@ describe("generateResearchJson", () => {
     );
   });
 
+  it("falls back to OpenAI when Anthropic returns a retryable API error", async () => {
+    process.env.OPENAI_API_KEY = "openai-test-key";
+    vi.useRealTimers();
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: { type: "overloaded_error", message: "Overloaded" },
+          }),
+          { status: 529 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: JSON.stringify({ ok: true }) } }],
+          }),
+          { status: 200 },
+        ),
+      ) as typeof fetch;
+
+    const { generateBatchJson, getConfiguredProvider } = await import(
+      "./llm.ts"
+    );
+
+    await expect(generateBatchJson("system", "user")).resolves.toEqual({
+      ok: true,
+    });
+    expect(getConfiguredProvider()).toBe("anthropic");
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      "https://api.anthropic.com/v1/messages",
+      expect.objectContaining({
+        body: expect.stringContaining('"model":"claude-haiku-4-5-20251001"'),
+      }),
+    );
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      2,
+      "https://api.openai.com/v1/chat/completions",
+      expect.objectContaining({
+        body: expect.stringContaining('"model":"gpt-5-mini"'),
+        headers: expect.objectContaining({
+          Authorization: "Bearer openai-test-key",
+        }),
+      }),
+    );
+  });
+
   it("aborts stalled research requests before the stage-level timeout", async () => {
     global.fetch = vi.fn((_url, init) => {
       const signal = init?.signal as AbortSignal | undefined;
