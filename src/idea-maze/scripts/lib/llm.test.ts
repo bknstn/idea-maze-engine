@@ -54,6 +54,10 @@ describe("generateResearchJson", () => {
         }),
       }),
     );
+    const request = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.max_completion_tokens).toBe(8192);
+    expect(body).not.toHaveProperty("max_tokens");
   });
 
   it("prefers Anthropic when both Anthropic and OpenAI are configured", async () => {
@@ -131,6 +135,10 @@ describe("generateResearchJson", () => {
         }),
       }),
     );
+    const request = vi.mocked(global.fetch).mock.calls[1]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.max_completion_tokens).toBe(8192);
+    expect(body).not.toHaveProperty("max_tokens");
   });
 
   it("aborts stalled research requests before the stage-level timeout", async () => {
