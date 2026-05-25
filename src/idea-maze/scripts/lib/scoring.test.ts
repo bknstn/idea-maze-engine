@@ -76,4 +76,23 @@ describe('scoreSourceItem daily-routine harvest signals', () => {
     expect(result.signals).not.toContain('productivity-friction');
     expect(result.score).toBeLessThan(0.55);
   });
+
+  it('does not infer health or memory pain from broad business wording and HTML', () => {
+    const result = scoreSourceItem({
+      source: 'reddit',
+      title: 'Please review my SaaS landing page form',
+      text: '<!-- SC_OFF --><div class="md"><p>We are running an agency and need feedback on a signup form, pricing page, and onboarding copy.</p><a href="https://www.reddit.com/r/SaaS/comments/example">comments</a></div>',
+      canonical_url: 'https://www.reddit.com/r/SaaS/comments/example/example/',
+      metadata: {
+        subreddit: 'r/SaaS',
+        score: 10,
+        num_comments: 5,
+        upvote_ratio: 0.75,
+      },
+    });
+
+    expect(result.signals).not.toContain('health-fitness');
+    expect(result.signals).not.toContain('learning-memory');
+    expect(result.signals).not.toContain('travel-logistics');
+  });
 });
