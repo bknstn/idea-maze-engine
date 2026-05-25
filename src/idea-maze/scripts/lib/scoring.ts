@@ -58,13 +58,13 @@ const TRACKING_PLANNING_TERMS = new Set([
 ]);
 
 const HEALTH_FITNESS_TERMS = new Set([
-  "deload", "form", "garmin", "gym", "injury", "oura", "plateau",
-  "program", "recovery", "running", "sleep", "soreness", "workout",
+  "deload", "garmin", "gym", "injury", "oura", "plateau",
+  "recovery", "soreness", "workout",
 ]);
 
 const LEARNING_MEMORY_TERMS = new Set([
   "anki", "flashcards", "forget", "forgetting", "language learning", "memorize",
-  "mnemonic", "recall", "retain", "retention", "review", "spaced repetition",
+  "mnemonic", "recall", "retain", "retention", "spaced repetition",
 ]);
 
 const PRODUCTIVITY_FRICTION_TERMS = new Set([
@@ -74,7 +74,7 @@ const PRODUCTIVITY_FRICTION_TERMS = new Set([
 
 const TRAVEL_LOGISTICS_TERMS = new Set([
   "booking", "carry-on", "flight", "flights", "itinerary", "onebag", "packing",
-  "passport", "trip", "travel", "visa",
+  "passport", "visa",
 ]);
 
 // --- Source pattern rules ---
@@ -124,6 +124,17 @@ const PATTERN_RULES: Record<string, { terms: Set<string>; weight: number }> = {
 
 // --- Scoring functions ---
 
+function normalizeScoringText(text: string): string {
+  return text
+    .replace(/<!--([\s\S]*?)-->/g, " ")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&(?:amp|lt|gt|quot|#39);/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 function boundedKeywordScore(haystack: string, terms: Set<string>, perMatch: number, maxScore: number): number {
   let matches = 0;
   for (const term of terms) {
@@ -168,7 +179,7 @@ function commentCount(source: string, metadata: Record<string, any>): number {
 
 export function scoreSourceItem(input: ScoreInput): ScoringResult {
   const metadata = input.metadata ?? {};
-  const haystack = [
+  const haystack = normalizeScoringText([
     input.author ?? "",
     input.title ?? "",
     input.text,
@@ -178,8 +189,7 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     metadata.link_flair_text ?? "",
   ]
     .filter(Boolean)
-    .join(" \n")
-    .toLowerCase();
+    .join(" \n"));
 
   const patterns: string[] = [];
   const signals: string[] = [];
