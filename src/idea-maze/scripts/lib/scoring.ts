@@ -47,6 +47,36 @@ const SPEND_TERMS = new Set([
   "spent", "upwork",
 ]);
 
+const ROUTINE_FRICTION_TERMS = new Set([
+  "can't stick", "cannot stick", "fall off", "falling apart", "inconsistent",
+  "keep getting stuck", "overwhelmed", "routine", "struggle", "stuck",
+]);
+
+const TRACKING_PLANNING_TERMS = new Set([
+  "budget", "calendar", "checklist", "itinerary", "log", "meal prep",
+  "plan", "planning", "schedule", "steps", "time blocking", "track", "tracking",
+]);
+
+const HEALTH_FITNESS_TERMS = new Set([
+  "deload", "form", "garmin", "gym", "injury", "oura", "plateau",
+  "program", "recovery", "running", "sleep", "soreness", "workout",
+]);
+
+const LEARNING_MEMORY_TERMS = new Set([
+  "anki", "flashcards", "forget", "forgetting", "language learning", "memorize",
+  "mnemonic", "recall", "retain", "retention", "review", "spaced repetition",
+]);
+
+const PRODUCTIVITY_FRICTION_TERMS = new Set([
+  "burnout", "distracted", "focus", "habit", "procrastinate", "procrastination",
+  "task list", "todo", "to-do",
+]);
+
+const TRAVEL_LOGISTICS_TERMS = new Set([
+  "booking", "carry-on", "flight", "flights", "itinerary", "onebag", "packing",
+  "passport", "trip", "travel", "visa",
+]);
+
 // --- Source pattern rules ---
 
 const PATTERN_RULES: Record<string, { terms: Set<string>; weight: number }> = {
@@ -144,6 +174,8 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     input.text,
     input.canonical_url ?? "",
     metadata.snippet ?? "",
+    metadata.subreddit ?? "",
+    metadata.link_flair_text ?? "",
   ]
     .filter(Boolean)
     .join(" \n")
@@ -181,6 +213,48 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     breakdown.existing_spend = spendScore;
     signals.push("existing-spend");
     score += spendScore;
+  }
+
+  const routineScore = boundedKeywordScore(haystack, ROUTINE_FRICTION_TERMS, 0.045, 0.16);
+  if (routineScore) {
+    breakdown.routine_friction = routineScore;
+    signals.push("routine-friction");
+    score += routineScore;
+  }
+
+  const trackingScore = boundedKeywordScore(haystack, TRACKING_PLANNING_TERMS, 0.04, 0.14);
+  if (trackingScore) {
+    breakdown.tracking_planning = trackingScore;
+    signals.push("tracking-planning");
+    score += trackingScore;
+  }
+
+  const healthScore = boundedKeywordScore(haystack, HEALTH_FITNESS_TERMS, 0.04, 0.14);
+  if (healthScore) {
+    breakdown.health_fitness = healthScore;
+    signals.push("health-fitness");
+    score += healthScore;
+  }
+
+  const learningScore = boundedKeywordScore(haystack, LEARNING_MEMORY_TERMS, 0.04, 0.14);
+  if (learningScore) {
+    breakdown.learning_memory = learningScore;
+    signals.push("learning-memory");
+    score += learningScore;
+  }
+
+  const productivityScore = boundedKeywordScore(haystack, PRODUCTIVITY_FRICTION_TERMS, 0.04, 0.14);
+  if (productivityScore) {
+    breakdown.productivity_friction = productivityScore;
+    signals.push("productivity-friction");
+    score += productivityScore;
+  }
+
+  const travelScore = boundedKeywordScore(haystack, TRAVEL_LOGISTICS_TERMS, 0.04, 0.14);
+  if (travelScore) {
+    breakdown.travel_logistics = travelScore;
+    signals.push("travel-logistics");
+    score += travelScore;
   }
 
   // Source pattern matching
