@@ -203,11 +203,11 @@ git diff -- src/idea-maze/scripts/lib/scoring.ts src/idea-maze/scripts/lib/scori
 npm run typecheck
 npm test
 git add src/idea-maze/scripts/lib/scoring.ts src/idea-maze/scripts/lib/scoring.test.ts
-git commit -m "Tune Reddit scoring by topic" -m "Co-authored-by: Buddy <dobby.aibuddy@gmail.com>"
+git commit -m "Tune Reddit scoring by topic"
 git push origin main
 ```
 
-**Expected:** All tests pass; pushed to `main` only if Kostya has authorized push for that session.
+**Expected:** All tests pass; pushed to `main` only if Kostya has authorized push for that session. The local commit hook adds the Buddy `Co-authored-by` trailer; do not pass an explicit trailer unless the hook is disabled.
 
 ---
 
