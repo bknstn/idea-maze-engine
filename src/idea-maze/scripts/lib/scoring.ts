@@ -77,6 +77,36 @@ const TRAVEL_LOGISTICS_TERMS = new Set([
   "passport", "visa",
 ]);
 
+export type RedditTopicGroup = 'health' | 'learning' | 'productivity' | 'travel' | 'other';
+
+const HEALTH_SUBREDDITS = new Set(['r/bodyweightfitness', 'r/beginnerfitness', 'r/running', 'r/ouraring', 'r/garmin', 'r/biohackers']);
+const LEARNING_SUBREDDITS = new Set(['r/getstudying', 'r/anki', 'r/memory', 'r/mnemonics', 'r/languagelearning']);
+const PRODUCTIVITY_SUBREDDITS = new Set(['r/productivity', 'r/selfimprovement', 'r/decidingtobebetter']);
+const TRAVEL_SUBREDDITS = new Set(['r/onebag', 'r/solotravel', 'r/digitalnomad', 'r/shoestring']);
+
+function normalizeSubreddit(value: unknown): string {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return '';
+  return raw.startsWith('r/') ? raw : `r/${raw}`;
+}
+
+export function classifyRedditTopicGroup(subreddit: unknown): RedditTopicGroup {
+  const normalized = normalizeSubreddit(subreddit);
+  if (HEALTH_SUBREDDITS.has(normalized)) return 'health';
+  if (LEARNING_SUBREDDITS.has(normalized)) return 'learning';
+  if (PRODUCTIVITY_SUBREDDITS.has(normalized)) return 'productivity';
+  if (TRAVEL_SUBREDDITS.has(normalized)) return 'travel';
+  return 'other';
+}
+
+function topicPerMatch(topicMatches: boolean, basePerMatch: number, boostedPerMatch: number): number {
+  return topicMatches ? boostedPerMatch : basePerMatch;
+}
+
+function topicMax(topicMatches: boolean, baseMax: number, boostedMax: number): number {
+  return topicMatches ? boostedMax : baseMax;
+}
+
 // --- Source pattern rules ---
 
 const PATTERN_RULES: Record<string, { terms: Set<string>; weight: number }> = {
@@ -119,6 +149,18 @@ const PATTERN_RULES: Record<string, { terms: Set<string>; weight: number }> = {
   "hype-derivative": {
     terms: new Set(["ai for ", "agent for ", "research paper", "adjacent product ideas", "search volume"]),
     weight: -0.16,
+  },
+  "megathread-noise": {
+    terms: new Set(["megathread", "weekly thread", "daily thread", "bag finder megathread"]),
+    weight: -0.16,
+  },
+  "motivation-only": {
+    terms: new Set(["you can do it", "believe in yourself", "success story", "i made it", "thank you community"]),
+    weight: -0.12,
+  },
+  "showcase-only": {
+    terms: new Set(["my setup", "rate my", "review my fit", "what would you optimize"]),
+    weight: -0.08,
   },
 };
 
@@ -191,6 +233,10 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     .filter(Boolean)
     .join(" \n"));
 
+  const topicGroup = input.source === 'reddit'
+    ? classifyRedditTopicGroup(metadata.subreddit ?? metadata.channel_or_label ?? metadata.subreddit_name)
+    : 'other';
+
   const patterns: string[] = [];
   const signals: string[] = [];
   const breakdown: Record<string, number> = {};
@@ -225,42 +271,74 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     score += spendScore;
   }
 
-  const routineScore = boundedKeywordScore(haystack, ROUTINE_FRICTION_TERMS, 0.045, 0.16);
+  const routineTopicMatch = topicGroup === 'health' || topicGroup === 'productivity';
+  const routineScore = boundedKeywordScore(
+    haystack,
+    ROUTINE_FRICTION_TERMS,
+    topicPerMatch(routineTopicMatch, 0.045, 0.06),
+    topicMax(routineTopicMatch, 0.16, 0.18),
+  );
   if (routineScore) {
     breakdown.routine_friction = routineScore;
     signals.push("routine-friction");
     score += routineScore;
   }
 
-  const trackingScore = boundedKeywordScore(haystack, TRACKING_PLANNING_TERMS, 0.04, 0.14);
+  const trackingTopicMatch = topicGroup === 'learning' || topicGroup === 'travel';
+  const trackingScore = boundedKeywordScore(
+    haystack,
+    TRACKING_PLANNING_TERMS,
+    topicPerMatch(trackingTopicMatch, 0.04, 0.05),
+    topicMax(trackingTopicMatch, 0.14, 0.16),
+  );
   if (trackingScore) {
     breakdown.tracking_planning = trackingScore;
     signals.push("tracking-planning");
     score += trackingScore;
   }
 
-  const healthScore = boundedKeywordScore(haystack, HEALTH_FITNESS_TERMS, 0.04, 0.14);
+  const healthScore = boundedKeywordScore(
+    haystack,
+    HEALTH_FITNESS_TERMS,
+    topicPerMatch(topicGroup === 'health', 0.035, 0.06),
+    topicMax(topicGroup === 'health', 0.12, 0.18),
+  );
   if (healthScore) {
     breakdown.health_fitness = healthScore;
     signals.push("health-fitness");
     score += healthScore;
   }
 
-  const learningScore = boundedKeywordScore(haystack, LEARNING_MEMORY_TERMS, 0.04, 0.14);
+  const learningScore = boundedKeywordScore(
+    haystack,
+    LEARNING_MEMORY_TERMS,
+    topicPerMatch(topicGroup === 'learning', 0.035, 0.06),
+    topicMax(topicGroup === 'learning', 0.12, 0.18),
+  );
   if (learningScore) {
     breakdown.learning_memory = learningScore;
     signals.push("learning-memory");
     score += learningScore;
   }
 
-  const productivityScore = boundedKeywordScore(haystack, PRODUCTIVITY_FRICTION_TERMS, 0.04, 0.14);
+  const productivityScore = boundedKeywordScore(
+    haystack,
+    PRODUCTIVITY_FRICTION_TERMS,
+    topicPerMatch(topicGroup === 'productivity', 0.035, 0.06),
+    topicMax(topicGroup === 'productivity', 0.12, 0.18),
+  );
   if (productivityScore) {
     breakdown.productivity_friction = productivityScore;
     signals.push("productivity-friction");
     score += productivityScore;
   }
 
-  const travelScore = boundedKeywordScore(haystack, TRAVEL_LOGISTICS_TERMS, 0.04, 0.14);
+  const travelScore = boundedKeywordScore(
+    haystack,
+    TRAVEL_LOGISTICS_TERMS,
+    topicPerMatch(topicGroup === 'travel', 0.035, 0.06),
+    topicMax(topicGroup === 'travel', 0.12, 0.18),
+  );
   if (travelScore) {
     breakdown.travel_logistics = travelScore;
     signals.push("travel-logistics");
@@ -296,7 +374,7 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     score += commentBonus;
   }
 
-  // Extra penalties for weak signal + promotional/hype
+  // Extra penalties for weak/noisy signal patterns
   const signalSet = new Set(signals);
   if (
     patterns.includes("promotional") &&
@@ -313,6 +391,25 @@ export function scoreSourceItem(input: ScoreInput): ScoringResult {
     breakdown.derivative_penalty = -0.07;
     signals.push("derivative-source");
     score -= 0.07;
+  }
+
+  const hasConcretePain = signalSet.has("complaint-language") || signalSet.has("routine-friction");
+  if (patterns.includes("megathread-noise") && !hasConcretePain) {
+    breakdown.daily_routine_noise_penalty = -0.08;
+    signals.push("weak-pain-evidence");
+    score -= 0.08;
+  }
+
+  if (patterns.includes("motivation-only") && !hasConcretePain) {
+    breakdown.motivation_penalty = -0.05;
+    signals.push("weak-pain-evidence");
+    score -= 0.05;
+  }
+
+  if (patterns.includes("showcase-only") && !hasConcretePain) {
+    breakdown.showcase_penalty = -0.22;
+    signals.push("weak-pain-evidence");
+    score -= 0.22;
   }
 
   const normalized = Math.round(Math.max(0.05, Math.min(1.0, score)) * 1000) / 1000;
