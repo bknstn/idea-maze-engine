@@ -65,6 +65,40 @@ describe('scoreSourceItem daily-routine harvest signals', () => {
     expect(result.score).toBeGreaterThanOrEqual(0.55);
   });
 
+  it('boosts topic-relevant health posts above the same text in a business subreddit', () => {
+    const title = 'Plateau after deload and recovery is confusing';
+    const text = 'My soreness, workout recovery, and deload schedule keep getting stuck and I need help adjusting.';
+
+    const health = scoreRedditPost(title, text, 'bodyweightfitness');
+    const business = scoreRedditPost(title, text, 'SaaS');
+
+    expect(health.signals).toContain('health-fitness');
+    expect(health.score).toBeGreaterThan(business.score);
+  });
+
+  it('boosts learning-memory posts in learning subreddits without business spend terms', () => {
+    const result = scoreRedditPost(
+      'Retention backlog keeps growing',
+      'My Anki reviews, recall, and spaced repetition plan are falling apart and I keep forgetting words.',
+      'Anki',
+    );
+
+    expect(result.signals).toContain('learning-memory');
+    expect(result.breakdown.learning_memory).toBeGreaterThanOrEqual(0.18);
+    expect(result.score).toBeGreaterThanOrEqual(0.55);
+  });
+
+  it('boosts travel logistics in travel subreddits over the same words in SaaS', () => {
+    const title = 'Packing itinerary and visa planning is stressful';
+    const text = 'I need a checklist for flights, visa rules, budget, booking, carry-on packing, and itinerary changes.';
+
+    const travel = scoreRedditPost(title, text, 'onebag');
+    const business = scoreRedditPost(title, text, 'SaaS');
+
+    expect(travel.signals).toContain('travel-logistics');
+    expect(travel.score).toBeGreaterThan(business.score);
+  });
+
   it('does not over-score generic motivational posts with no concrete friction', () => {
     const result = scoreRedditPost(
       'You can do it today',
@@ -74,7 +108,31 @@ describe('scoreSourceItem daily-routine harvest signals', () => {
 
     expect(result.signals).not.toContain('routine-friction');
     expect(result.signals).not.toContain('productivity-friction');
+    expect(result.patterns).toContain('motivation-only');
     expect(result.score).toBeLessThan(0.55);
+  });
+
+  it('downweights daily routine megathreads without concrete user pain', () => {
+    const result = scoreRedditPost(
+      'Bag finder megathread',
+      'Weekly thread for packing lists, carry-on recommendations, onebag setup links, itinerary ideas, and booking discussion.',
+      'onebag',
+    );
+
+    expect(result.patterns).toContain('megathread-noise');
+    expect(result.score).toBeLessThan(0.55);
+  });
+
+  it('keeps concrete need-help travel logistics posts eligible', () => {
+    const result = scoreRedditPost(
+      'Need help traveling to Cincinnati with visa and safety constraints',
+      'I am stuck planning the itinerary, budget, visa timing, flight booking, safety tradeoffs, and carry-on packing for a short trip.',
+      'solotravel',
+    );
+
+    expect(result.signals).toContain('travel-logistics');
+    expect(result.signals).toContain('complaint-language');
+    expect(result.score).toBeGreaterThanOrEqual(0.55);
   });
 
   it('does not infer health or memory pain from broad business wording and HTML', () => {

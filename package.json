@@ -11,6 +11,7 @@
     "idea:status": "tsx src/idea-maze/scripts/pipeline-status.ts",
     "idea:run": "tsx src/idea-maze/scripts/run-pipeline.ts",
     "idea:ingest:reddit": "tsx src/idea-maze/scripts/ingest-reddit.ts",
+    "idea:inspect:reddit": "tsx src/idea-maze/scripts/inspect-reddit-harvest.ts",
     "idea:ingest:gmail": "tsx src/idea-maze/scripts/ingest-gmail.ts",
     "idea:ingest:telegram": "tsx src/idea-maze/scripts/ingest-telegram.ts",
     "idea:extract": "tsx src/idea-maze/scripts/extract-insights.ts",
