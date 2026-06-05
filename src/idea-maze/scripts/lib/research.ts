@@ -45,7 +45,7 @@ export interface ResearchOpportunityResult {
   opportunityId: number;
   opportunitySlug: string;
   runId: number;
-  status: 'review_gate';
+  status: 'review_gate' | 'needs_more_evidence';
 }
 
 function slugify(value: string): string {
@@ -476,20 +476,76 @@ export async function researchOpportunity(
         ]),
       ],
     };
+    const isFallbackTemplate =
+      promptMetadata.validation_status === 'fallback_template';
+    const nextRunStatus = isFallbackTemplate
+      ? 'needs_more_evidence'
+      : 'review_gate';
+    const runMetadata = {
+      draft,
+      prompt_metadata: promptMetadata,
+      research_trace: {
+        source_item_count: sourceItems.length,
+        external_search: searchTrace,
+      },
+    };
+
+    if (isFallbackTemplate) {
+      db.prepare(
+        `
+        UPDATE runs
+        SET status = ?, completed_at_utc = ?, metadata_json = ?
+        WHERE id = ?
+      `,
+      ).run(nextRunStatus, new Date().toISOString(), JSON.stringify(runMetadata), runId);
+      recordRunEvent(db, {
+        actor: requestedBy,
+        eventType: 'research.quarantined',
+        opportunityId: Number(opp.id),
+        payload: {
+          ...promptMetadata,
+          archive_reason: 'fallback_template_research_draft',
+          publication_mode: 'artifact',
+          source_item_count: sourceItems.length,
+        },
+        runId,
+        stage: 'research',
+        status: 'warning',
+        summary: `Fallback research draft quarantined for ${opp.slug}.`,
+      });
+      setOpportunityLifecycle(db, Number(opp.id), 'archived', {
+        actor: requestedBy,
+        payload: {
+          archive_reason: 'fallback_template_research_draft',
+          prompt_metadata: promptMetadata,
+          source_item_count: sourceItems.length,
+        },
+        runId,
+        status: 'archived',
+        summary: `Fallback research draft quarantined for ${opp.slug}.`,
+      });
+      logger.log(`Fallback research draft for run #${runId}; quarantined as needs_more_evidence.`);
+      emitParentEvent({
+        actor: requestedBy,
+        eventType: 'research.quarantined',
+        opportunityId: Number(opp.id),
+        payload: { child_run_id: runId, prompt_metadata: promptMetadata },
+        stage: 'process-opportunities',
+        status: 'warning',
+        summary: `Fallback research draft quarantined for ${opp.slug}.`,
+      });
+
+      return {
+        opportunityId: Number(opp.id),
+        opportunitySlug: opp.slug,
+        runId,
+        status: 'needs_more_evidence',
+      };
+    }
 
     db.prepare(
       "UPDATE runs SET status = 'review_gate', metadata_json = ? WHERE id = ?",
-    ).run(
-      JSON.stringify({
-        draft,
-        prompt_metadata: promptMetadata,
-        research_trace: {
-          source_item_count: sourceItems.length,
-          external_search: searchTrace,
-        },
-      }),
-      runId,
-    );
+    ).run(JSON.stringify(runMetadata), runId);
     recordRunEvent(db, {
       actor: requestedBy,
       eventType: 'research.draft_ready',

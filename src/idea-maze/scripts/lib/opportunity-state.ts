@@ -104,8 +104,13 @@ export function setOpportunityLifecycle(
     nextStatus = opportunity.lifecycle_stage === 'rejected' ? 'archived' : 'active';
   }
   const metadataPatch =
-    nextLifecycleStage === "archived" && options.payload?.archive_reason
-      ? { archive_reason: options.payload.archive_reason }
+    nextLifecycleStage === "archived"
+      ? {
+          ...(options.payload?.archive_reason
+            ? { archive_reason: options.payload.archive_reason }
+            : {}),
+          ...(options.payload ? { archive_payload: options.payload } : {}),
+        }
       : {};
 
   db.prepare(`
