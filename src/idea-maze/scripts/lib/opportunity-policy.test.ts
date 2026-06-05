@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyOpportunityForAutomation,
   classifyOpportunityScore,
   getOpportunityScoreBucket,
 } from './opportunity-policy.ts';
@@ -45,5 +46,49 @@ describe('classifyOpportunityScore', () => {
       bucket: 10,
       disposition: 'publish_artifact',
     });
+  });
+});
+
+describe('classifyOpportunityForAutomation', () => {
+  it('uses evidence quality caps before allowing review-gate automation', () => {
+    expect(
+      classifyOpportunityForAutomation({
+        finalScore: 9.8,
+        evidenceQuality: {
+          adjustedMaxScore: 7,
+          disposition: 'needs_more_evidence',
+          independentSourceCount: 2,
+          reasons: ['insufficient_independent_sources'],
+          sourceQuality: {
+            directPainCount: 1,
+            duplicateContentCount: 0,
+            promoCount: 0,
+            timeLossCount: 0,
+            wtpOrBudgetCount: 0,
+          },
+        },
+      }),
+    ).toEqual({ bucket: 7, disposition: 'ignore' });
+  });
+
+  it('allows high-scoring review-eligible evidence through', () => {
+    expect(
+      classifyOpportunityForAutomation({
+        finalScore: 9.8,
+        evidenceQuality: {
+          adjustedMaxScore: 10,
+          disposition: 'review_eligible',
+          independentSourceCount: 3,
+          reasons: [],
+          sourceQuality: {
+            directPainCount: 3,
+            duplicateContentCount: 0,
+            promoCount: 0,
+            timeLossCount: 1,
+            wtpOrBudgetCount: 1,
+          },
+        },
+      }),
+    ).toEqual({ bucket: 9, disposition: 'publish_artifact' });
   });
 });

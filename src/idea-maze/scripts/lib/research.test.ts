@@ -112,7 +112,7 @@ describe('researchOpportunity', () => {
     expect(metadata.prompt_metadata.validation_status).toBe('valid');
   });
 
-  it('keeps fallback template drafts at the review gate without publishing', async () => {
+  it('quarantines fallback template drafts away from the review gate without publishing', async () => {
     mocks.generateResearchJson.mockRejectedValue(
       new Error('Anthropic API request timed out after 120000ms'),
     );
@@ -147,7 +147,7 @@ describe('researchOpportunity', () => {
       requestedBy: 'system',
     });
 
-    expect(result.status).toBe('review_gate');
+    expect(result.status).toBe('needs_more_evidence');
 
     const run = db
       .prepare(
@@ -170,8 +170,18 @@ describe('researchOpportunity', () => {
       };
     };
 
-    expect(run.status).toBe('review_gate');
+    const opportunity = db
+      .prepare('SELECT lifecycle_stage, status, metadata_json FROM opportunities WHERE slug = ?')
+      .get('finance-ops') as {
+      lifecycle_stage: string;
+      metadata_json: string;
+      status: string;
+    };
+
+    expect(run.status).toBe('needs_more_evidence');
     expect(run.error).toBeNull();
+    expect(opportunity.lifecycle_stage).toBe('archived');
+    expect(opportunity.status).toBe('archived');
     expect(metadata.draft.thesis).toBe(
       'Teams keep reconciling invoices by hand.',
     );
