@@ -239,7 +239,7 @@ async function main() {
           summary: `Quality gate archived ${opp.slug}.`,
         });
         summary.quality_gate_archived++;
-        if (evidenceQuality.reasons.includes('insufficient_independent_sources')) {
+        if (evidenceQuality.reasons.includes('insufficient_independent_buyer_sources')) {
           summary.needs_more_evidence++;
         }
         if (evidenceQuality.reasons.includes('promo_dominated')) {
