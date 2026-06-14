@@ -50,7 +50,42 @@ describe('evaluateEvidenceQuality', () => {
     expect(result.sourceQuality.duplicateContentCount).toBe(2);
     expect(result.adjustedMaxScore).toBe(7);
     expect(result.reasons).toContain('duplicate_sources');
-    expect(result.reasons).toContain('insufficient_independent_sources');
+    expect(result.reasons).toContain('insufficient_independent_buyer_sources');
+  });
+
+  it('does not count Tavily search context as independent buyer evidence', () => {
+    const result = evaluateEvidenceQuality(
+      [
+        source({ id: 1, text: 'Manual reconciliation is painful and takes hours weekly.' }),
+        source({ id: 2, source: 'search', channel_or_label: 'tavily', title: 'Top 10 self-serve finance tools', text: 'A complete guide to software solutions and market trends.' }),
+        source({ id: 3, source: 'search', channel_or_label: 'tavily', title: 'Self-serve reconciliation guide', text: 'Best practices and platform overview for invoice matching.' }),
+      ],
+      { finalScore: 9.1, validationStatus: 'valid' },
+    );
+
+    expect(result.disposition).toBe('needs_more_evidence');
+    expect(result.independentSourceCount).toBe(1);
+    expect(result.sourceQuality.searchResultCount).toBe(2);
+    expect(result.sourceQuality.genericSearchRefCount).toBe(2);
+    expect(result.reasons).toContain('search_refs_context_only');
+    expect(result.reasons).toContain('generic_search_refs');
+    expect(result.reasons).toContain('insufficient_independent_buyer_sources');
+  });
+
+  it('allows two primary sources when they include direct WTP or time-loss evidence', () => {
+    const result = evaluateEvidenceQuality(
+      [
+        source({ id: 1, text: 'I would pay for a fix because manual reconciliation wastes hours every week.' }),
+        source({ id: 2, text: 'We currently track mismatches in spreadsheets and lose half a day monthly.' }),
+        source({ id: 3, source: 'search', channel_or_label: 'tavily', text: 'Vendor context for the category.' }),
+      ],
+      { finalScore: 9.1, validationStatus: 'valid' },
+    );
+
+    expect(result.disposition).toBe('review_eligible');
+    expect(result.independentSourceCount).toBe(2);
+    expect(result.sourceQuality.searchResultCount).toBe(1);
+    expect(result.reasons).not.toContain('insufficient_independent_buyer_sources');
   });
 
   it('quarantines fallback-template drafts regardless of score', () => {
