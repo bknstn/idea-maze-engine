@@ -275,3 +275,142 @@ export function validateResearchDraft(
     },
   };
 }
+
+
+export interface ValidatedExplorationBrief {
+  thesis: string;
+  icp: {
+    buyer: string;
+    user: string;
+    trigger: string;
+    current_workaround: string;
+    budget_owner: string;
+  };
+  evidence_summary: Array<{
+    source_type: string;
+    quote_or_summary: string;
+    interpretation: string;
+    evidence_role: string;
+  }>;
+  competitor_map: Array<{
+    name: string;
+    category: string;
+    positioning: string;
+    weakness: string;
+  }>;
+  workflow_wedge: {
+    narrow_workflow: string;
+    must_have_features: string[];
+    explicit_non_goals: string[];
+  };
+  interview_script: string[];
+  smoke_test: {
+    audience: string;
+    offer: string;
+    channel: string;
+    success_metric: string;
+  };
+  pricing_hypothesis: string;
+  kill_criteria: string[];
+  open_questions: string[];
+  next_action: string;
+}
+
+function validateObjectArray<T>(
+  value: unknown,
+  path: string,
+  errors: string[],
+  mapper: (object: Record<string, unknown>, itemPath: string, errors: string[]) => T | null,
+): T[] | null {
+  if (!Array.isArray(value)) {
+    errors.push(`${path} must be an array`);
+    return null;
+  }
+  const out: T[] = [];
+  for (let index = 0; index < value.length; index++) {
+    const itemPath = `${path}[${index}]`;
+    const object = validateObject(value[index], itemPath, errors);
+    if (!object) continue;
+    const mapped = mapper(object, itemPath, errors);
+    if (mapped) out.push(mapped);
+  }
+  return out.length === value.length ? out : null;
+}
+
+export function validateExplorationBrief(
+  input: unknown,
+): ValidationResult<ValidatedExplorationBrief> {
+  const errors: string[] = [];
+  const object = validateObject(input, 'brief', errors);
+  if (!object) return { errors, value: null };
+
+  const thesis = validateString(object.thesis, 'brief.thesis', errors);
+  const icpObject = validateObject(object.icp, 'brief.icp', errors);
+  const icp = icpObject
+    ? {
+        buyer: validateString(icpObject.buyer, 'brief.icp.buyer', errors),
+        user: validateString(icpObject.user, 'brief.icp.user', errors),
+        trigger: validateString(icpObject.trigger, 'brief.icp.trigger', errors),
+        current_workaround: validateString(icpObject.current_workaround, 'brief.icp.current_workaround', errors),
+        budget_owner: validateString(icpObject.budget_owner, 'brief.icp.budget_owner', errors),
+      }
+    : null;
+  const evidenceSummary = validateObjectArray(object.evidence_summary, 'brief.evidence_summary', errors, (item, itemPath, itemErrors) => {
+    const source_type = validateString(item.source_type, `${itemPath}.source_type`, itemErrors);
+    const quote_or_summary = validateString(item.quote_or_summary, `${itemPath}.quote_or_summary`, itemErrors);
+    const interpretation = validateString(item.interpretation, `${itemPath}.interpretation`, itemErrors);
+    const evidence_role = validateString(item.evidence_role, `${itemPath}.evidence_role`, itemErrors);
+    return source_type && quote_or_summary && interpretation && evidence_role ? { source_type, quote_or_summary, interpretation, evidence_role } : null;
+  });
+  const competitorMap = validateObjectArray(object.competitor_map, 'brief.competitor_map', errors, (item, itemPath, itemErrors) => {
+    const name = validateString(item.name, `${itemPath}.name`, itemErrors);
+    const category = validateString(item.category, `${itemPath}.category`, itemErrors);
+    const positioning = validateString(item.positioning, `${itemPath}.positioning`, itemErrors);
+    const weakness = validateString(item.weakness, `${itemPath}.weakness`, itemErrors);
+    return name && category && positioning && weakness ? { name, category, positioning, weakness } : null;
+  });
+  const wedgeObject = validateObject(object.workflow_wedge, 'brief.workflow_wedge', errors);
+  const workflowWedge = wedgeObject
+    ? {
+        narrow_workflow: validateString(wedgeObject.narrow_workflow, 'brief.workflow_wedge.narrow_workflow', errors),
+        must_have_features: validateStringArray(wedgeObject.must_have_features, 'brief.workflow_wedge.must_have_features', errors),
+        explicit_non_goals: validateStringArray(wedgeObject.explicit_non_goals, 'brief.workflow_wedge.explicit_non_goals', errors),
+      }
+    : null;
+  const interviewScript = validateStringArray(object.interview_script, 'brief.interview_script', errors);
+  const smokeObject = validateObject(object.smoke_test, 'brief.smoke_test', errors);
+  const smokeTest = smokeObject
+    ? {
+        audience: validateString(smokeObject.audience, 'brief.smoke_test.audience', errors),
+        offer: validateString(smokeObject.offer, 'brief.smoke_test.offer', errors),
+        channel: validateString(smokeObject.channel, 'brief.smoke_test.channel', errors),
+        success_metric: validateString(smokeObject.success_metric, 'brief.smoke_test.success_metric', errors),
+      }
+    : null;
+  const pricingHypothesis = validateString(object.pricing_hypothesis, 'brief.pricing_hypothesis', errors);
+  const killCriteria = validateStringArray(object.kill_criteria, 'brief.kill_criteria', errors);
+  const openQuestions = validateStringArray(object.open_questions, 'brief.open_questions', errors);
+  const nextAction = validateString(object.next_action, 'brief.next_action', errors);
+
+  if (errors.length || !icp || !workflowWedge || !smokeTest) return { errors, value: null };
+  return {
+    errors,
+    value: {
+      thesis: thesis!,
+      icp: {
+        buyer: icp.buyer!, user: icp.user!, trigger: icp.trigger!, current_workaround: icp.current_workaround!, budget_owner: icp.budget_owner!,
+      },
+      evidence_summary: evidenceSummary!,
+      competitor_map: competitorMap!,
+      workflow_wedge: {
+        narrow_workflow: workflowWedge.narrow_workflow!, must_have_features: workflowWedge.must_have_features!, explicit_non_goals: workflowWedge.explicit_non_goals!,
+      },
+      interview_script: interviewScript!,
+      smoke_test: { audience: smokeTest.audience!, offer: smokeTest.offer!, channel: smokeTest.channel!, success_metric: smokeTest.success_metric! },
+      pricing_hypothesis: pricingHypothesis!,
+      kill_criteria: killCriteria!,
+      open_questions: openQuestions!,
+      next_action: nextAction!,
+    },
+  };
+}

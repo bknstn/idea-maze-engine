@@ -149,4 +149,16 @@ describe('initSchema migrations', () => {
       { id: 3, lifecycle_stage: 'shortlisted' },
     ]);
   });
+
+  it('creates exploration_artifacts for deep exploration briefs', async () => {
+    const { getDb } = await import('./db.ts');
+    const { initSchema } = await import('./schema.ts');
+    const db = getDb();
+    initSchema(db);
+    const table = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='exploration_artifacts'").all() as Array<{ name: string }>;
+    expect(table).toHaveLength(1);
+    const columns = db.prepare('PRAGMA table_info(exploration_artifacts)').all() as Array<{ name: string }>;
+    expect(columns.map((column) => column.name)).toEqual(['id', 'opportunity_id', 'run_id', 'path', 'brief_json', 'created_at_utc']);
+  });
+
 });

@@ -122,6 +122,19 @@ export function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS ix_artifacts_run_id         ON artifacts(run_id);
     CREATE INDEX IF NOT EXISTS ix_artifacts_created_at_utc ON artifacts(created_at_utc);
 
+    CREATE TABLE IF NOT EXISTS exploration_artifacts (
+      id              INTEGER PRIMARY KEY,
+      opportunity_id  INTEGER NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+      run_id          INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+      path            TEXT    NOT NULL,
+      brief_json      TEXT    NOT NULL,
+      created_at_utc  TEXT    NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS ix_exploration_artifacts_opportunity_id ON exploration_artifacts(opportunity_id);
+    CREATE INDEX IF NOT EXISTS ix_exploration_artifacts_run_id         ON exploration_artifacts(run_id);
+    CREATE INDEX IF NOT EXISTS ix_exploration_artifacts_created_at_utc ON exploration_artifacts(created_at_utc);
+
     CREATE TABLE IF NOT EXISTS artifact_exports (
       id                  INTEGER PRIMARY KEY,
       artifact_id         INTEGER NOT NULL UNIQUE REFERENCES artifacts(id) ON DELETE CASCADE,

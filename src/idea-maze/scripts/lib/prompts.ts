@@ -221,3 +221,93 @@ Return JSON with this exact structure:
   "risks": ["risk 1", ...]
 }`;
 }
+
+
+export const EXPLORATION_PROMPT_NAME = 'idea-maze-exploration';
+export const EXPLORATION_PROMPT_VERSION = '2026-06-21.1';
+
+export const EXPLORATION_SYSTEM_PROMPT = `You are a founder-track product researcher creating a deep exploration brief for an already approved opportunity.
+
+Rules:
+- Approved means worth exploring, not worth building yet.
+- Sharpen buyer, trigger, current workaround, WTP, distribution, and kill criteria.
+- Use direct buyer/source evidence for pain. Do not count web search as independent buyer-pain evidence.
+- Web search is only competitor/context research.
+- Prefer narrow self-serve wedges a solo founder can test quickly.
+- Be explicit when evidence is thin.`;
+
+export function buildExplorationUserPrompt(input: {
+  slug: string;
+  title: string;
+  thesis: string;
+  approved_research_draft: string;
+  source_evidence: string[];
+  contextual_research: string[];
+  search_synthesis?: string[];
+}): string {
+  const fmtList = (items: string[]) => items.length ? items.map((s) => `- ${s}`).join('\n') : '- None';
+  return `Explore this approved opportunity before build/no-build decision.
+
+Opportunity: ${input.slug}
+Title: ${input.title}
+Current Thesis: ${input.thesis}
+
+## Approved Research Draft
+approved_research_draft:
+${input.approved_research_draft || 'None'}
+
+## Direct Source Evidence
+${fmtList(input.source_evidence)}
+
+## Contextual Research / Competitors
+${fmtList(input.contextual_research)}
+
+## Search Synthesis
+${fmtList(input.search_synthesis ?? [])}
+
+Do not count web search as independent buyer-pain evidence.
+
+Return JSON with this exact structure:
+{
+  "thesis": "sharpened thesis",
+  "icp": {
+    "buyer": "specific buyer",
+    "user": "specific user",
+    "trigger": "when pain appears",
+    "current_workaround": "what they do now",
+    "budget_owner": "who pays"
+  },
+  "evidence_summary": [
+    {
+      "source_type": "reddit|gmail|telegram|search|manual",
+      "quote_or_summary": "evidence",
+      "interpretation": "what it proves or does not prove",
+      "evidence_role": "buyer_pain|workflow|wtp|competitor_context|risk"
+    }
+  ],
+  "competitor_map": [
+    {
+      "name": "competitor/tool/current workaround",
+      "category": "category",
+      "positioning": "what it does",
+      "weakness": "why wedge may still exist"
+    }
+  ],
+  "workflow_wedge": {
+    "narrow_workflow": "one workflow to own",
+    "must_have_features": ["feature"],
+    "explicit_non_goals": ["non-goal"]
+  },
+  "interview_script": ["question"],
+  "smoke_test": {
+    "audience": "who to target",
+    "offer": "landing/outreach promise",
+    "channel": "first channel",
+    "success_metric": "numeric pass threshold"
+  },
+  "pricing_hypothesis": "price and packaging",
+  "kill_criteria": ["numeric or concrete kill criterion"],
+  "open_questions": ["question"],
+  "next_action": "single next action"
+}`;
+}

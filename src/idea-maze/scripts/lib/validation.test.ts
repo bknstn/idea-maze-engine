@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  validateExplorationBrief,
   validateHarvestBatchResponse,
   validateResearchDraft,
 } from './validation.ts';
@@ -90,5 +91,38 @@ describe('validateResearchDraft', () => {
     expect(result.value).toBeNull();
     expect(result.errors.join(' ')).toContain('draft.thesis');
     expect(result.errors.join(' ')).toContain('draft.evidence_from_inbox');
+  });
+});
+
+
+describe('validateExplorationBrief', () => {
+  it('validates complete exploration briefs', () => {
+    const result = validateExplorationBrief({
+      thesis: 'Managers lose delegated tasks across voice, calls, and chat.',
+      icp: {
+        buyer: 'Owner-manager of a 5-20 person field-service team',
+        user: 'Manager delegating work on the move',
+        trigger: 'Tasks get lost after phone calls or site visits',
+        current_workaround: 'WhatsApp, notes app, memory, spreadsheets',
+        budget_owner: 'Owner-manager',
+      },
+      evidence_summary: [{ source_type: 'reddit', quote_or_summary: 'A manager asks for a voice-first delegation system.', interpretation: 'Direct workflow pain.', evidence_role: 'buyer_pain' }],
+      competitor_map: [{ name: 'Todoist', category: 'task manager', positioning: 'General-purpose task capture', weakness: 'Not voice-first delegated-team follow-up' }],
+      workflow_wedge: { narrow_workflow: 'Speak task → assign person → confirm → follow up', must_have_features: ['voice capture'], explicit_non_goals: ['full project management'] },
+      interview_script: ['Tell me about the last delegated task that got lost.'],
+      smoke_test: { audience: 'Managers of 5-20 person teams', offer: 'Voice-first delegation inbox', channel: 'Reddit/manual outreach', success_metric: '5 calls booked from 50 outreaches' },
+      pricing_hypothesis: '$19-$49/month per manager',
+      kill_criteria: ['Fewer than 3/10 buyers report lost delegated tasks weekly'],
+      open_questions: ['Which communication channel matters first?'],
+      next_action: 'Run 10 buyer interviews before building.',
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.value?.icp.buyer).toContain('Owner-manager');
+  });
+
+  it('rejects exploration briefs missing kill criteria', () => {
+    const result = validateExplorationBrief({ thesis: 'Too thin' });
+    expect(result.value).toBeNull();
+    expect(result.errors).toContain('brief.kill_criteria must be an array');
   });
 });
