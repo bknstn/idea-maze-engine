@@ -135,25 +135,6 @@ export function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS ix_exploration_artifacts_run_id         ON exploration_artifacts(run_id);
     CREATE INDEX IF NOT EXISTS ix_exploration_artifacts_created_at_utc ON exploration_artifacts(created_at_utc);
 
-    CREATE TABLE IF NOT EXISTS artifact_exports (
-      id                  INTEGER PRIMARY KEY,
-      artifact_id         INTEGER NOT NULL UNIQUE REFERENCES artifacts(id) ON DELETE CASCADE,
-      status              TEXT    NOT NULL DEFAULT 'pending',
-      relative_path       TEXT    NOT NULL,
-      repo_url            TEXT,
-      repo_branch         TEXT,
-      attempt_count       INTEGER NOT NULL DEFAULT 0,
-      last_attempt_at_utc TEXT,
-      commit_sha          TEXT,
-      last_error          TEXT,
-      created_at_utc      TEXT    NOT NULL,
-      updated_at_utc      TEXT    NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS ix_artifact_exports_status              ON artifact_exports(status);
-    CREATE INDEX IF NOT EXISTS ix_artifact_exports_updated_at_utc      ON artifact_exports(updated_at_utc);
-    CREATE INDEX IF NOT EXISTS ix_artifact_exports_last_attempt_at_utc ON artifact_exports(last_attempt_at_utc);
-
     CREATE TABLE IF NOT EXISTS approvals (
       id              INTEGER PRIMARY KEY,
       run_id          INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
