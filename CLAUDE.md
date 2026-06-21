@@ -56,7 +56,6 @@ All source lives under `src/idea-maze/scripts/`. It's a 4-stage ETL pipeline bac
 | `opportunity-policy.ts` | Score bucketing (≥9 → publish, <9 → ignore) |
 | `research.ts` | Draft generation from clustered evidence; artifact creation |
 | `run-events.ts` | Run lifecycle, event recording, structured audit trail |
-| `artifact-export.ts` | GitHub repository push logic |
 | `paths.ts` | Data directory resolution (`IDEA_MAZE_HOME` override) |
 
 ### Data model highlights
@@ -75,7 +74,7 @@ All source lives under `src/idea-maze/scripts/`. It's a 4-stage ETL pipeline bac
 | `OPENAI_API_KEY` | Fallback LLM if Anthropic unavailable |
 | `TAVILY_API_KEY` | Web search enrichment during research (optional) |
 | `IDEA_MAZE_HOME` | Override data directory root (default: project root) |
-| `IDEA_MAZE_ARTIFACTS_REPO_URL` / `_BRANCH` | GitHub export target |
+
 
 ### Testing
 
