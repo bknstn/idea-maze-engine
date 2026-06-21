@@ -11,8 +11,10 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 export const EXTRACTION_MODEL = "claude-haiku-4-5-20251001"; // fast + cheap for bulk extraction
 export const RESEARCH_MODEL = "claude-sonnet-4-6"; // full reasoning for research drafts
+export const EXPLORATION_MODEL = "claude-opus-4-5"; // deeper reasoning for exploration briefs
 const OPENAI_EXTRACTION_MODEL = "gpt-5-mini";
 const OPENAI_RESEARCH_MODEL = "gpt-5.1";
+const OPENAI_EXPLORATION_MODEL = "gpt-5.5";
 const RESEARCH_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 
 type LlmProvider = "anthropic" | "openai";
@@ -44,7 +46,13 @@ export function getMissingLlmReason(): string {
 }
 
 function modelFor(provider: LlmProvider, anthropicModel: string): string {
-  if (provider === "anthropic") return anthropicModel;
+  if (provider === "anthropic") {
+    if (anthropicModel === EXPLORATION_MODEL) return process.env.ANTHROPIC_EXPLORATION_MODEL ?? EXPLORATION_MODEL;
+    return anthropicModel;
+  }
+  if (anthropicModel === EXPLORATION_MODEL) {
+    return process.env.OPENAI_EXPLORATION_MODEL ?? OPENAI_EXPLORATION_MODEL;
+  }
   if (anthropicModel === RESEARCH_MODEL) {
     return process.env.OPENAI_RESEARCH_MODEL ?? OPENAI_RESEARCH_MODEL;
   }
@@ -59,6 +67,11 @@ export function getExtractionModel(): string | null {
 export function getResearchModel(): string | null {
   const provider = getConfiguredProvider();
   return provider ? modelFor(provider, RESEARCH_MODEL) : null;
+}
+
+export function getExplorationModel(): string | null {
+  const provider = getConfiguredProvider();
+  return provider ? modelFor(provider, EXPLORATION_MODEL) : null;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -244,6 +257,20 @@ export async function generateResearchJson<T>(
 ): Promise<T> {
   return callApi<T>(
     RESEARCH_MODEL,
+    systemPrompt,
+    userPrompt,
+    8192,
+    RESEARCH_REQUEST_TIMEOUT_MS,
+  );
+}
+
+/** Exploration brief generation using the configured exploration model */
+export async function generateExplorationJson<T>(
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<T> {
+  return callApi<T>(
+    EXPLORATION_MODEL,
     systemPrompt,
     userPrompt,
     8192,
