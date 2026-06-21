@@ -168,5 +168,8 @@ describe('observability reports', () => {
       opportunity_slug: 'finance-ops',
       path: '/tmp/finance-ops.md',
     });
+    expect(artifacts.artifacts[0]).not.toHaveProperty(
+      ['export', 'status'].join('_'),
+    );
   });
 });

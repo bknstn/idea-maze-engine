@@ -1,24 +1,17 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, posix, resolve } from 'node:path';
 import type Database from 'better-sqlite3';
 
-import {
-  artifactSourceRelativePath,
-  queueGitHubArtifactExport,
-  resolveArtifactPath,
-  type GitHubExportState,
-} from './artifact-export.ts';
 import { setOpportunityLifecycle } from './opportunity-state.ts';
+import { IDEA_MAZE_HOME } from './paths.ts';
 import { recordRunEvent } from './run-events.ts';
 import {
   recomputeAllOpportunityScores,
   updateTasteProfileFromPublicationSignal,
 } from './taste.ts';
 
-const ARTIFACTS_REPO_URL =
-  process.env.IDEA_MAZE_ARTIFACTS_REPO_URL?.trim() || null;
-const ARTIFACTS_REPO_BRANCH =
-  process.env.IDEA_MAZE_ARTIFACTS_REPO_BRANCH?.trim() || 'main';
+const ARTIFACT_SOURCE_PREFIX = 'data/artifacts';
+const ARTIFACT_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 export interface ResearchDraft {
   opportunity_slug: string;
@@ -181,6 +174,24 @@ export function renderMarkdown(
   return lines.join('\n').trim() + '\n';
 }
 
+function artifactSourceRelativePath(
+  slug: string,
+  timestamp = new Date(),
+): string {
+  if (!ARTIFACT_SLUG_PATTERN.test(slug)) {
+    throw new Error(`Invalid artifact slug: ${slug}`);
+  }
+
+  const y = timestamp.getUTCFullYear();
+  const m = String(timestamp.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(timestamp.getUTCDate()).padStart(2, '0');
+  return posix.join(ARTIFACT_SOURCE_PREFIX, String(y), m, d, `${slug}.md`);
+}
+
+function resolveArtifactPath(relativePath: string): string {
+  return resolve(IDEA_MAZE_HOME, ...relativePath.split('/'));
+}
+
 export function artifactPath(slug: string, timestamp = new Date()): string {
   return resolveArtifactPath(artifactSourceRelativePath(slug, timestamp));
 }
@@ -190,7 +201,6 @@ export function publishResearchArtifact(
   runId: number,
   notes: string | null = null,
 ): {
-  githubExport: GitHubExportState;
   path: string;
   opportunityId: number;
   draft: ResearchDraft;
@@ -230,14 +240,6 @@ export function publishResearchArtifact(
     )
     .run(opportunityId, runId, path, now, now);
   const artifactId = Number(artifactInsert.lastInsertRowid);
-  const githubExport = queueGitHubArtifactExport(db, {
-    artifactId,
-    opportunityId,
-    relativePath,
-    repoBranch: ARTIFACTS_REPO_BRANCH,
-    repoUrl: ARTIFACTS_REPO_URL,
-    runId,
-  });
 
   db.prepare(
     "UPDATE runs SET status = 'published', completed_at_utc = ? WHERE id = ?",
@@ -265,9 +267,6 @@ export function publishResearchArtifact(
       artifact_id: artifactId,
       artifact_path: path,
       artifact_relative_path: relativePath,
-      github_export_repo_branch: ARTIFACTS_REPO_BRANCH,
-      github_export_repo_url: ARTIFACTS_REPO_URL,
-      github_export_status: githubExport.status,
       notes,
     },
     runId,
@@ -276,5 +275,5 @@ export function publishResearchArtifact(
     summary: `Research artifact published for run #${runId}.`,
   });
 
-  return { githubExport, path, opportunityId, draft };
+  return { path, opportunityId, draft };
 }
