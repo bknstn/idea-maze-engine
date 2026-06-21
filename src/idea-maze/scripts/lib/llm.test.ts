@@ -15,6 +15,8 @@ describe("generateResearchJson", () => {
     global.fetch = originalFetch;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_EXPLORATION_MODEL;
+    delete process.env.ANTHROPIC_EXPLORATION_MODEL;
   });
 
   it("uses OpenAI when Anthropic is missing and OpenAI is configured", async () => {
@@ -161,4 +163,36 @@ describe("generateResearchJson", () => {
 
     await assertion;
   });
+
+  it("selects explicit OpenAI exploration model override", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.OPENAI_API_KEY = "test";
+    process.env.OPENAI_EXPLORATION_MODEL = "gpt-5.5";
+    const { getExplorationModel } = await import("./llm.ts");
+    expect(getExplorationModel()).toBe("gpt-5.5");
+  });
+
+  it("selects explicit Anthropic exploration model override", async () => {
+    process.env.ANTHROPIC_API_KEY = "test";
+    process.env.ANTHROPIC_EXPLORATION_MODEL = "claude-opus-4-5";
+    const { getExplorationModel } = await import("./llm.ts");
+    expect(getExplorationModel()).toBe("claude-opus-4-5");
+  });
+
+  it("generates exploration JSON with exploration model and research token budget", async () => {
+    vi.useRealTimers();
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ content: [{ text: JSON.stringify({ ok: true }) }] }),
+        { status: 200 },
+      ),
+    ) as typeof fetch;
+    const { generateExplorationJson } = await import("./llm.ts");
+    await expect(generateExplorationJson("system", "user")).resolves.toEqual({ ok: true });
+    const request = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.model).toBe("claude-opus-4-5");
+    expect(body.max_tokens).toBe(8192);
+  });
+
 });

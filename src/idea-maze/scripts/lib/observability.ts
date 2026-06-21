@@ -258,7 +258,7 @@ export function buildPipelineStatusReport(db: Database.Database): string {
       : 'Completed: still running or unavailable',
     latestRun?.error ? `Error: ${latestRun.error}` : 'Error: none',
     '',
-    `Counts: ${snapshot.counts.source_items} sources, ${snapshot.counts.insights} insights, ${snapshot.counts.opportunities} opportunities, ${snapshot.active_opportunities} active, ${snapshot.archived_opportunities} archived, ${snapshot.counts.runs_pending} open research runs, ${snapshot.counts.artifacts} artifacts`,
+    `Counts: ${snapshot.counts.source_items} sources, ${snapshot.counts.insights} insights, ${snapshot.counts.opportunities} opportunities, ${snapshot.active_opportunities} active, ${snapshot.archived_opportunities} archived, ${snapshot.counts.runs_pending} open research runs, ${snapshot.counts.artifacts} artifacts, ${snapshot.counts.exploration_artifacts} explorations`,
     '',
     'Stages:',
   ];

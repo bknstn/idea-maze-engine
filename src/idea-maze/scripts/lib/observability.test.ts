@@ -50,6 +50,18 @@ describe('observability reports', () => {
       VALUES (1, 'validation.warning', 'research', 'system', 'warning', 'Research draft validation failed.', '{"failure_class":"validation"}', '2026-04-15T06:04:00.000Z')
     `,
     ).run();
+    db.prepare(
+      `
+      INSERT INTO opportunities (id, slug, title, thesis, score, market_score, taste_adjustment, final_score, status, lifecycle_stage, cluster_key, metadata_json, created_at_utc, updated_at_utc)
+      VALUES (1, 'voice-looking', 'Voice Looking', 'Delegation pain', 9, 9, 0, 9, 'active', 'approved', 'voice-looking', '{}', '2026-04-15T06:00:00.000Z', '2026-04-15T06:00:00.000Z')
+    `,
+    ).run();
+    db.prepare(
+      `
+      INSERT INTO exploration_artifacts (id, opportunity_id, run_id, path, brief_json, created_at_utc)
+      VALUES (1, 1, 1, '/tmp/voice-looking.md', '{"next_action":"Interview 10 managers."}', '2026-04-15T06:06:00.000Z')
+    `,
+    ).run();
 
     const report = buildPipelineStatusReport(db);
     const snapshot = buildPipelineStatusSnapshot(db);
@@ -58,6 +70,8 @@ describe('observability reports', () => {
     expect(report).toContain('ingest-reddit: ok');
     expect(report).toContain('validation');
     expect(snapshot.latest_run?.id).toBe(1);
+    expect(snapshot.counts.exploration_artifacts).toBe(1);
+    expect(report).toContain('1 explorations');
     expect(snapshot.stages[0]).toMatchObject({
       duration_ms: 12,
       stage: 'ingest-reddit',
