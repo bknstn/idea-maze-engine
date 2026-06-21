@@ -209,6 +209,7 @@ export function getCounts(): {
   opportunities: number;
   runs_pending: number;
   artifacts: number;
+  exploration_artifacts: number;
 } {
   const db = getDb();
   return {
@@ -228,5 +229,8 @@ export function getCounts(): {
     ).n,
     artifacts: (db.prepare('SELECT COUNT(*) as n FROM artifacts').get() as any)
       .n,
+    exploration_artifacts: (
+      db.prepare('SELECT COUNT(*) as n FROM exploration_artifacts').get() as any
+    ).n,
   };
 }
