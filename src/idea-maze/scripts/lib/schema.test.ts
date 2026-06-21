@@ -108,13 +108,6 @@ describe('initSchema migrations', () => {
     expect(columns.map((column) => column.name)).toContain('taste_adjustment');
     expect(columns.map((column) => column.name)).toContain('final_score');
     expect(columns.map((column) => column.name)).toContain('lifecycle_stage');
-    const tables = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'artifact_exports'",
-      )
-      .all() as Array<{ name: string }>;
-    expect(tables).toHaveLength(1);
-
     const row = db
       .prepare(
         `

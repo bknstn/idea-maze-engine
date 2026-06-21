@@ -91,15 +91,10 @@ export interface ArtifactsSnapshot {
   artifacts: Array<{
     approved_at_utc: string | null;
     created_at_utc: string;
-    export_attempt_count: number | null;
-    export_commit_sha: string | null;
-    export_last_error: string | null;
-    export_status: string | null;
     id: number;
     opportunity_slug: string;
     opportunity_title: string;
     path: string;
-    relative_path: string | null;
     run_id: number;
   }>;
 }
@@ -392,15 +387,9 @@ export function buildArtifactsSnapshot(
         a.approved_at_utc,
         a.created_at_utc,
         o.slug AS opportunity_slug,
-        o.title AS opportunity_title,
-        ae.relative_path,
-        ae.status AS export_status,
-        ae.attempt_count AS export_attempt_count,
-        ae.commit_sha AS export_commit_sha,
-        ae.last_error AS export_last_error
+        o.title AS opportunity_title
       FROM artifacts a
       JOIN opportunities o ON o.id = a.opportunity_id
-      LEFT JOIN artifact_exports ae ON ae.artifact_id = a.id
       ORDER BY COALESCE(a.approved_at_utc, a.created_at_utc) DESC, a.id DESC
       LIMIT ?
     `,
@@ -422,18 +411,9 @@ export function buildArtifactsReport(
   }
 
   for (const artifact of snapshot.artifacts) {
-    const exportStatus = artifact.export_status
-      ? ` export=${artifact.export_status}`
-      : ' export=not_queued';
-    const commit = artifact.export_commit_sha
-      ? ` commit=${artifact.export_commit_sha}`
-      : '';
     lines.push(
-      `- ${artifact.created_at_utc}: ${artifact.opportunity_slug} run #${artifact.run_id}${exportStatus}${commit} — ${artifact.path}`,
+      `- ${artifact.created_at_utc}: ${artifact.opportunity_slug} run #${artifact.run_id} — ${artifact.path}`,
     );
-    if (artifact.export_last_error) {
-      lines.push(`  Last export error: ${artifact.export_last_error}`);
-    }
   }
 
   return `${lines.join('\n')}\n`;

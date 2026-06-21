@@ -16,8 +16,6 @@ describe('artifact publication flow', () => {
     fs.mkdirSync(path.join(ideaMazeHome, 'data'), { recursive: true });
     process.env.IDEA_MAZE_HOME = ideaMazeHome;
     process.env.IDEA_MAZE_IPC = ipcDir;
-    delete process.env.IDEA_MAZE_ARTIFACTS_REPO_BRANCH;
-    delete process.env.IDEA_MAZE_ARTIFACTS_REPO_URL;
     vi.resetModules();
   });
 
@@ -25,8 +23,6 @@ describe('artifact publication flow', () => {
     const { closeDb } = await import('./db.ts');
     closeDb();
     vi.useRealTimers();
-    delete process.env.IDEA_MAZE_ARTIFACTS_REPO_BRANCH;
-    delete process.env.IDEA_MAZE_ARTIFACTS_REPO_URL;
     delete process.env.IDEA_MAZE_HOME;
     delete process.env.IDEA_MAZE_IPC;
     fs.rmSync(ideaMazeHome, { recursive: true, force: true });
@@ -103,7 +99,7 @@ describe('artifact publication flow', () => {
     return db;
   }
 
-  it('records publication feedback and leaves GitHub export disabled when mirror config is absent', async () => {
+  it('records publication feedback and writes only a local artifact', async () => {
     const db = await seedPublishableRun();
     const { publishResearchArtifact } = await import('./review.ts');
 
@@ -131,73 +127,18 @@ describe('artifact publication flow', () => {
     `,
       )
       .get() as { payload_json: string; summary: string } | undefined;
-    const exportCount = (
-      db.prepare('SELECT COUNT(*) as n FROM artifact_exports').get() as any
-    ).n;
-
-    expect(result.githubExport.status).toBe('disabled');
     expect(opportunity.lifecycle_stage).toBe('artifact');
     expect(feedbackCount).toBeGreaterThan(0);
     expect(publicationEvent?.summary).toContain('published');
-    expect(publicationEvent?.payload_json).toContain(
-      '"github_export_status":"disabled"',
+    const publicationPayload = JSON.parse(publicationEvent?.payload_json ?? '{}');
+    expect(publicationPayload).not.toHaveProperty(
+      ['github', 'export', 'status'].join('_'),
     );
-    expect(exportCount).toBe(0);
-  });
-
-  it('queues a host-side GitHub export row and writes an IPC wakeup when mirror config is present', async () => {
-    process.env.IDEA_MAZE_ARTIFACTS_REPO_URL =
-      'git@github.com:bknstn/idea-maze-artifacts.git';
-    process.env.IDEA_MAZE_ARTIFACTS_REPO_BRANCH = 'main';
-    vi.resetModules();
-
-    const db = await seedPublishableRun();
-    const { publishResearchArtifact } = await import('./review.ts');
-
-    const result = publishResearchArtifact(db, 1, 'Strong fit');
-
-    const artifactExport = db
-      .prepare(
-        `
-      SELECT status, relative_path, repo_url, repo_branch, attempt_count, last_error
-      FROM artifact_exports
-      LIMIT 1
-    `,
-      )
-      .get() as {
-      attempt_count: number;
-      last_error: string | null;
-      relative_path: string;
-      repo_branch: string;
-      repo_url: string;
-      status: string;
-    };
-    const queuedEvent = db
-      .prepare(
-        `
-      SELECT payload_json, summary
-      FROM run_events
-      WHERE run_id = 1 AND event_type = 'artifact_export.queued'
-      LIMIT 1
-    `,
-      )
-      .get() as { payload_json: string; summary: string } | undefined;
-    const taskFiles = fs.readdirSync(path.join(ipcDir, 'tasks'));
-
-    expect(result.githubExport.status).toBe('queued');
-    expect(artifactExport.status).toBe('pending');
-    expect(artifactExport.relative_path).toBe(
-      'data/artifacts/2026/04/18/finance-ops.md',
+    expect(result.path).toContain(
+      path.join('data', 'artifacts', '2026', '04', '18', 'finance-ops.md'),
     );
-    expect(artifactExport.repo_url).toBe(
-      'git@github.com:bknstn/idea-maze-artifacts.git',
-    );
-    expect(artifactExport.repo_branch).toBe('main');
-    expect(artifactExport.attempt_count).toBe(0);
-    expect(artifactExport.last_error).toBeNull();
-    expect(queuedEvent?.summary).toContain('queued for host processing');
-    expect(queuedEvent?.payload_json).toContain('"ipc_wakeup_sent":true');
-    expect(taskFiles).toHaveLength(1);
+    expect(fs.existsSync(result.path)).toBe(true);
+    expect(fs.existsSync(path.join(ipcDir, 'tasks'))).toBe(false);
   });
 
   it('rejects artifact slugs that could escape the artifact directory', async () => {
