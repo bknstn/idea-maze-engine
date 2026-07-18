@@ -1,8 +1,5 @@
 import { closeDb, getDb } from './lib/db.ts';
-import {
-  evaluateReviewGateCandidate,
-  unavailableEvidenceAligner,
-} from './lib/review-gate-revalidation.ts';
+import { evaluateReviewGateCandidate } from './lib/review-gate-revalidation.ts';
 import { AUTO_PUBLISH_MIN_BUCKET } from './lib/opportunity-policy.ts';
 
 function rowsToCounts(rows: Array<{reason:string|null;count:number}>): Record<string,number> { return Object.fromEntries(rows.map((row)=>[row.reason ?? 'unknown',Number(row.count)])); }
@@ -29,9 +26,7 @@ async function main() {
     `).all(AUTO_PUBLISH_MIN_BUCKET) as Array<{id:number;slug:string;title:string;thesis:string;cluster_key:string;final_score:number;run_id:null}>;
     const candidateEvaluations=[];
     for(const candidate of candidates) {
-      candidateEvaluations.push(
-        await evaluateReviewGateCandidate(db, candidate, unavailableEvidenceAligner),
-      );
+      candidateEvaluations.push(await evaluateReviewGateCandidate(db, candidate));
     }
     const recentReviewed=scalar(db,`SELECT COUNT(*) value FROM (SELECT id FROM runs WHERE status IN ('approved','rejected') ORDER BY COALESCE(completed_at_utc,started_at_utc) DESC LIMIT 30)`);
     const recentFalsePasses=scalar(db,`
