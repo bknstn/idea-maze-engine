@@ -63,7 +63,9 @@ export function parseHumanReviewArgs(argv: string[]): ParsedHumanReviewArgs {
       .map((value) => value.trim())
       .filter(Boolean),
   ];
-  const reasons = decision === 'rejected' ? reasonValues.map(parseReason) : [];
+  const reasons = decision === 'rejected'
+    ? [...new Set(reasonValues.flatMap((value) => value.split(',')).map((value) => value.trim()).filter(Boolean).map(parseReason))]
+    : [];
 
   return {
     decision,
@@ -77,6 +79,8 @@ export function parseHumanReviewArgs(argv: string[]): ParsedHumanReviewArgs {
 export function humanReviewUsage(): string {
   return [
     'Usage: tsx apply-human-review.ts --run-id <id> (--approve|--reject) [--reason <label> ...] [--notes <text>] [--json]',
+    'Multiple reasons: --reject --reason irrelevant_sources --reason promo_only_support',
+    'Comma-separated reasons: --reject --reason irrelevant_sources,duplicate_cluster',
     `Known rejection reasons: ${REJECTION_REASONS.join(', ')}`,
   ].join('\n');
 }

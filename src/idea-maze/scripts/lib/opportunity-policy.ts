@@ -5,11 +5,13 @@ export const AUTO_PUBLISH_MIN_BUCKET = 9;
 export type OpportunityDisposition = 'ignore' | 'publish_artifact';
 
 export interface OpportunityPolicy {
+  automationScore?: number;
   bucket: number;
   disposition: OpportunityDisposition;
 }
 
 export interface OpportunityPolicyInput {
+  alignment?: { adjustedMaxScore: number; disposition: string };
   finalScore: number;
   evidenceQuality?: EvidenceQualityResult;
 }
@@ -23,15 +25,18 @@ export function classifyOpportunityForAutomation(
   input: OpportunityPolicyInput,
 ): OpportunityPolicy {
   const evidenceQuality = input.evidenceQuality;
-  const effectiveScore = evidenceQuality
-    ? Math.min(input.finalScore, evidenceQuality.adjustedMaxScore)
-    : input.finalScore;
+  const effectiveScore = Math.min(
+    input.finalScore,
+    evidenceQuality?.adjustedMaxScore ?? input.finalScore,
+    input.alignment?.adjustedMaxScore ?? input.finalScore,
+  );
 
-  if (evidenceQuality && evidenceQuality.disposition !== 'review_eligible') {
-    return { bucket: getOpportunityScoreBucket(effectiveScore), disposition: 'ignore' };
+  if ((evidenceQuality && evidenceQuality.disposition !== 'review_eligible') ||
+      (input.alignment && input.alignment.disposition !== 'review_eligible')) {
+    return { automationScore: effectiveScore, bucket: getOpportunityScoreBucket(effectiveScore), disposition: 'ignore' };
   }
 
-  return classifyOpportunityScore(effectiveScore);
+  return { ...classifyOpportunityScore(effectiveScore), automationScore: effectiveScore };
 }
 
 export function classifyOpportunityScore(score: number): OpportunityPolicy {

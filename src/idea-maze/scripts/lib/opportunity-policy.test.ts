@@ -58,6 +58,7 @@ describe('classifyOpportunityForAutomation', () => {
           adjustedMaxScore: 7,
           disposition: 'needs_more_evidence',
           independentSourceCount: 2,
+          independentBuyerSourceCount: 2,
           reasons: ['insufficient_independent_buyer_sources'],
           sourceQuality: {
             directPainCount: 1,
@@ -71,10 +72,15 @@ describe('classifyOpportunityForAutomation', () => {
             timeLossCount: 0,
             wtpOrBudgetCount: 0,
             workaroundCount: 0,
+            uniquePrimarySources: 2,
+            nonPromoPrimarySources: 2,
+            directBuyerPainSources: 1,
+            irrelevantSourceCount: 0,
+            thesisAlignedBuyerSources: 2,
           },
         },
       }),
-    ).toEqual({ bucket: 7, disposition: 'ignore' });
+    ).toEqual({ automationScore: 7, bucket: 7, disposition: 'ignore' });
   });
 
   it('allows high-scoring review-eligible evidence through', () => {
@@ -85,6 +91,7 @@ describe('classifyOpportunityForAutomation', () => {
           adjustedMaxScore: 10,
           disposition: 'review_eligible',
           independentSourceCount: 3,
+          independentBuyerSourceCount: 3,
           reasons: [],
           sourceQuality: {
             directPainCount: 3,
@@ -98,9 +105,23 @@ describe('classifyOpportunityForAutomation', () => {
             timeLossCount: 1,
             wtpOrBudgetCount: 1,
             workaroundCount: 0,
+            uniquePrimarySources: 3,
+            nonPromoPrimarySources: 3,
+            directBuyerPainSources: 3,
+            irrelevantSourceCount: 0,
+            thesisAlignedBuyerSources: 3,
           },
         },
       }),
-    ).toEqual({ bucket: 9, disposition: 'publish_artifact' });
+    ).toEqual({ automationScore: 9.8, bucket: 9, disposition: 'publish_artifact' });
+  });
+
+  it('takes the minimum of raw, deterministic, and alignment caps', () => {
+    const evidenceQuality = {
+      adjustedMaxScore: 10, disposition: 'review_eligible' as const, independentSourceCount: 3,
+      independentBuyerSourceCount: 3, reasons: [],
+      sourceQuality: { directPainCount:3,duplicateContentCount:0,genericAiWrapperCount:0,genericSearchRefCount:0,primaryBuyerSourceCount:3,primaryDirectPainCount:3,promoCount:0,searchResultCount:0,timeLossCount:0,wtpOrBudgetCount:0,workaroundCount:0,uniquePrimarySources:3,nonPromoPrimarySources:3,directBuyerPainSources:3,irrelevantSourceCount:0,thesisAlignedBuyerSources:3 },
+    };
+    expect(classifyOpportunityForAutomation({ finalScore: 9.8, evidenceQuality, alignment: { disposition: 'needs_more_evidence', adjustedMaxScore: 7 } })).toEqual({ automationScore: 7, bucket: 7, disposition: 'ignore' });
   });
 });

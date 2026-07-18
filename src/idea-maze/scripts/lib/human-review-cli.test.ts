@@ -47,4 +47,9 @@ describe('parseHumanReviewArgs', () => {
       parseHumanReviewArgs(['--reject', '--run-id', '123', '--reason', 'because_i_said_so']),
     ).toThrow('Unknown rejection reason: because_i_said_so');
   });
+
+  it('accepts standardized alignment reasons and comma values on repeated reason flags', () => {
+    expect(parseHumanReviewArgs(['--reject', '--run-id', '9', '--reason', 'contradicted_thesis,promo_only_support', '--reason=irrelevant_sources', '--reason', 'duplicate_cluster']).reasons)
+      .toEqual(['contradicted_thesis', 'promo_only_support', 'irrelevant_sources', 'duplicate_cluster']);
+  });
 });
