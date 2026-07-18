@@ -4,6 +4,10 @@ import {
   evaluateEvidenceQuality,
   type EvidenceSourceSummary,
 } from './evidence-quality.ts';
+import {
+  BOOKKEEPING_POSITIVE_FIXTURE,
+  REJECTED_REVIEW_GATE_FIXTURES,
+} from './review-gate-regression-fixtures.ts';
 
 function source(input: Partial<EvidenceSourceSummary> & { id: number; text: string }): EvidenceSourceSummary {
   return {
@@ -18,6 +22,39 @@ function source(input: Partial<EvidenceSourceSummary> & { id: number; text: stri
 }
 
 describe('evaluateEvidenceQuality', () => {
+  it.each(REJECTED_REVIEW_GATE_FIXTURES)('blocks rejected fixture $slug', (fixture) => {
+    const result = evaluateEvidenceQuality(fixture.sources, {
+      finalScore: fixture.finalScore,
+      thesis: fixture.thesis,
+      title: fixture.title,
+    });
+    expect(result.disposition).not.toBe('review_eligible');
+    expect(result.reasons).toContain(fixture.expectedReason);
+  });
+
+  it('keeps strong bookkeeping client-document evidence eligible', () => {
+    const fixture = BOOKKEEPING_POSITIVE_FIXTURE;
+    const result = evaluateEvidenceQuality(fixture.sources, {
+      finalScore: fixture.finalScore,
+      thesis: fixture.thesis,
+      title: fixture.title,
+    });
+    expect(result.disposition).toBe('review_eligible');
+    expect(result.independentBuyerSourceCount).toBe(3);
+    expect(result.sourceQuality.thesisAlignedBuyerSources).toBe(3);
+  });
+
+  it('deduplicates normalized crossposts even when hashes differ', () => {
+    const text = 'I am a bookkeeper and manually chase missing client documents every Friday.';
+    const result = evaluateEvidenceQuality([
+      source({ id: 201, title: 'Help!', text, content_hash: 'hash-a' }),
+      source({ id: 202, title: 'Help', text: `${text} https://example.com`, content_hash: 'hash-b' }),
+      source({ id: 203, text: 'Our bookkeepers lose hours collecting missing client documents.' }),
+    ], { finalScore: 9.5, title: 'Bookkeeping document collection', thesis: 'Bookkeepers need to collect client documents.' });
+    expect(result.sourceQuality.duplicateContentCount).toBe(1);
+    expect(result.reasons).toContain('crosspost_duplicates');
+    expect(result.independentBuyerSourceCount).toBe(2);
+  });
   it('allows three independent direct-pain sources into review eligibility', () => {
     const result = evaluateEvidenceQuality(
       [
