@@ -250,6 +250,14 @@ export async function generateJson<T>(
   return callApi<T>(EXTRACTION_MODEL, systemPrompt, userPrompt);
 }
 
+/** Cheap structured source-to-thesis classification through centralized provider routing. */
+export async function generateEvidenceAlignmentJson<T>(
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<T> {
+  return callApi<T>(EXTRACTION_MODEL, systemPrompt, userPrompt, 4096, RESEARCH_REQUEST_TIMEOUT_MS);
+}
+
 /** Research drafting using the configured research model */
 export async function generateResearchJson<T>(
   systemPrompt: string,

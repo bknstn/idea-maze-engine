@@ -9,17 +9,14 @@
  */
 
 import { closeDb, getDb } from './lib/db.ts';
-import { findRejectedDuplicate } from './lib/duplicate-opportunities.ts';
-import {
-  evaluateEvidenceQuality,
-  type EvidenceSourceSummary,
-} from './lib/evidence-quality.ts';
+import { attachDuplicateEvidence } from './lib/duplicate-opportunities.ts';
 import { setOpportunityLifecycle } from './lib/opportunity-state.ts';
 import {
   AUTO_PUBLISH_MIN_BUCKET,
   classifyOpportunityForAutomation,
 } from './lib/opportunity-policy.ts';
 import { researchOpportunity } from './lib/research.ts';
+import { evaluateReviewGateCandidate } from './lib/review-gate-revalidation.ts';
 import { withStageRunContext } from './lib/run-events.ts';
 import { initSchema } from './lib/schema.ts';
 
@@ -41,24 +38,6 @@ const DEFAULT_NEW_RESEARCH_LIMIT = 3;
 
 function isQualityGateDisabled(): boolean {
   return process.env.IDEA_MAZE_DISABLE_QUALITY_GATE === '1';
-}
-
-function fetchOpportunitySources(
-  db: ReturnType<typeof getDb>,
-  opportunityId: number,
-): EvidenceSourceSummary[] {
-  return db
-    .prepare(
-      `
-      SELECT si.id, si.source, si.title, si.text, si.canonical_url,
-             si.channel_or_label, si.content_hash, si.metadata_json
-      FROM source_items si
-      JOIN opportunity_sources os ON os.source_item_id = si.id
-      WHERE os.opportunity_id = ?
-      ORDER BY json_extract(si.metadata_json, '$.harvest_score') DESC, si.timestamp_utc DESC
-    `,
-    )
-    .all(opportunityId) as EvidenceSourceSummary[];
 }
 
 function parseNewResearchLimit(argv = process.argv): number {
@@ -94,6 +73,7 @@ async function main() {
       SELECT COUNT(*) AS count
       FROM opportunities
       WHERE status = 'active'
+        AND lifecycle_stage NOT IN ('approved', 'rejected')
         AND final_score < ?
     `,
         )
@@ -127,6 +107,7 @@ async function main() {
 	        ) AS draft_run_id
       FROM opportunities o
       WHERE o.status = 'active'
+        AND o.lifecycle_stage NOT IN ('approved', 'rejected')
         AND o.final_score >= ?
       ORDER BY o.final_score DESC, o.updated_at_utc DESC
     `,
@@ -165,18 +146,38 @@ async function main() {
       skipped_existing: 0,
     };
     const qualityGateDisabled = isQualityGateDisabled();
+    if (qualityGateDisabled) {
+      stageRun.emit({ eventType: 'quality_gate.bypassed', status: 'warning', summary: 'Quality gates bypassed by IDEA_MAZE_DISABLE_QUALITY_GATE=1.', payload: { audit_bypass: true } });
+    }
     let startedNewResearchRuns = 0;
 
     for (const opp of opportunities) {
-      if (!qualityGateDisabled) {
-        const duplicateGate = findRejectedDuplicate(db, {
+      const gateEvaluation = qualityGateDisabled
+        ? undefined
+        : await evaluateReviewGateCandidate(db, {
           cluster_key: opp.cluster_key,
+          final_score: opp.final_score,
           id: opp.id,
+          run_id: opp.draft_run_id,
           slug: opp.slug,
           thesis: opp.thesis,
           title: opp.title,
         });
+
+      if (gateEvaluation?.duplicate.duplicate) {
+        const duplicateGate = gateEvaluation.duplicate;
         if (duplicateGate.duplicate) {
+          if (duplicateGate.action !== 'archive_duplicate_rejected' && duplicateGate.matchedOpportunityId) {
+            const attached = attachDuplicateEvidence(db, opp.id, duplicateGate.matchedOpportunityId);
+            setOpportunityLifecycle(db, opp.id, 'archived', {
+              payload: { archive_reason: 'duplicate_cluster', duplicate_gate: duplicateGate, evidence_attached: attached, final_score: opp.final_score },
+              runId: stageRun.runId, status: 'archived',
+              summary: `Attached ${opp.slug} evidence to canonical ${duplicateGate.matchedSlug}.`,
+            });
+            stageRun.emit({ eventType: 'opportunity.duplicate_attached', opportunityId: opp.id, status: 'warning', summary: `Attached duplicate evidence to ${duplicateGate.matchedSlug}.`, payload: { duplicate_gate: duplicateGate, evidence_attached: attached } });
+            summary.skipped_existing++;
+            continue;
+          }
           setOpportunityLifecycle(db, opp.id, 'archived', {
             payload: {
               archive_reason: 'duplicate_rejected_opportunity',
@@ -190,10 +191,7 @@ async function main() {
           stageRun.emit({
             eventType: 'opportunity.duplicate_archived',
             opportunityId: opp.id,
-            payload: {
-              duplicate_gate: duplicateGate,
-              slug: opp.slug,
-            },
+            payload: { duplicate_gate: duplicateGate, slug: opp.slug },
             status: 'warning',
             summary: `Archived duplicate rejected opportunity ${opp.slug}.`,
           });
@@ -202,15 +200,27 @@ async function main() {
         }
       }
 
-      const evidenceQuality = qualityGateDisabled
-        ? undefined
-        : evaluateEvidenceQuality(fetchOpportunitySources(db, opp.id), {
-            finalScore: opp.final_score,
-            validationStatus: null,
-          });
-      const policy = classifyOpportunityForAutomation({
-        evidenceQuality,
+      const evidenceQuality = gateEvaluation?.deterministic;
+      const alignment = gateEvaluation?.alignment ?? undefined;
+      const policy = gateEvaluation?.policy ?? classifyOpportunityForAutomation({
         finalScore: opp.final_score,
+      });
+
+      stageRun.emit({
+        eventType: 'opportunity.evidence_evaluated',
+        opportunityId: opp.id,
+        payload: {
+          alignment,
+          automation_score: policy.automationScore,
+          deterministic_evidence: evidenceQuality,
+          final_score: opp.final_score,
+          quality_gate_bypassed: qualityGateDisabled,
+          review_gate_evaluation: gateEvaluation,
+        },
+        status: gateEvaluation?.disposition === 'review_eligible' || qualityGateDisabled
+          ? 'ok'
+          : 'warning',
+        summary: `Evidence evaluated for ${opp.slug}.`,
       });
 
       if (evidenceQuality && evidenceQuality.disposition !== 'review_eligible') {
@@ -218,6 +228,7 @@ async function main() {
           payload: {
             archive_reason: 'evidence_quality_gate',
             automation_disposition: policy.disposition,
+            automation_score: policy.automationScore,
             effective_score_bucket: policy.bucket,
             evidence_quality: evidenceQuality,
             final_score: opp.final_score,
@@ -232,7 +243,9 @@ async function main() {
           eventType: 'opportunity.quality_gate_archived',
           opportunityId: opp.id,
           payload: {
+            automation_score: policy.automationScore,
             evidence_quality: evidenceQuality,
+            final_score: opp.final_score,
             slug: opp.slug,
           },
           status: 'warning',
@@ -248,6 +261,16 @@ async function main() {
         continue;
       }
 
+      if (alignment && alignment.disposition !== 'review_eligible') {
+        setOpportunityLifecycle(db, opp.id, 'archived', {
+          payload: { archive_reason: 'evidence_alignment_gate', alignment, automation_score: policy.automationScore, evidence_quality: evidenceQuality, final_score: opp.final_score },
+          runId: stageRun.runId, status: 'archived', summary: `Archived ${opp.slug}: evidence alignment (${alignment.reasons.join(', ')}).`,
+        });
+        summary.quality_gate_archived++;
+        summary.needs_more_evidence++;
+        continue;
+      }
+
       if (policy.disposition === 'ignore') {
         summary.ignored++;
         continue;
@@ -258,6 +281,9 @@ async function main() {
           final_score: opp.final_score,
           market_score: opp.market_score,
           automation_disposition: policy.disposition,
+          automation_score: policy.automationScore,
+          evidence_alignment: alignment,
+          evidence_quality: evidenceQuality,
           score_bucket: policy.bucket,
           taste_adjustment: opp.taste_adjustment,
         },

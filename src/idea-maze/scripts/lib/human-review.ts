@@ -16,6 +16,10 @@ export const REJECTION_REASONS = [
   'thin_evidence',
   'low_wtp',
   'source_mismatch',
+  'contradicted_thesis',
+  'promo_only_support',
+  'irrelevant_sources',
+  'duplicate_cluster',
 ] as const;
 
 export type RejectionReason = (typeof REJECTION_REASONS)[number];
