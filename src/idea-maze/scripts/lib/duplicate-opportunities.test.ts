@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 
-import { findRejectedDuplicate } from './duplicate-opportunities.ts';
+import { findOpportunityDuplicate, findRejectedDuplicate } from './duplicate-opportunities.ts';
 import { initSchema } from './schema.ts';
 
 function insertOpportunity(
@@ -46,6 +46,103 @@ function insertSource(db: Database.Database, external_id: string): number {
 }
 
 describe('findRejectedDuplicate', () => {
+  it('selects an approved canonical before an active same-thesis candidate', () => {
+    const db = new Database(':memory:'); initSchema(db);
+    const active = insertOpportunity(db, { cluster_key: 'addiction-recovery', slug: 'out-know', title: 'Recovery knowledge companion', thesis: 'People in addiction recovery need guided support.' });
+    const approved = insertOpportunity(db, { cluster_key: 'addiction-recovery', lifecycle_stage: 'approved', slug: 'out-people', title: 'Recovery people support', thesis: 'People in addiction recovery need guided peer support.' });
+    db.prepare("UPDATE opportunities SET status='active' WHERE id=?").run(approved);
+    const result = findOpportunityDuplicate(db, { id: active, cluster_key: 'addiction-recovery', slug: 'out-know', title: 'Recovery knowledge companion', thesis: 'People in addiction recovery need guided support.' });
+    expect(result.duplicate).toBe(true);
+    expect(result.matchedOpportunityId).toBe(approved);
+    expect(result.matchedLifecycleStage).toBe('approved');
+    expect(result.action).toBe('attach_to_approved');
+  });
+
+  it('never marks the oldest active row as a duplicate of a newer peer', () => {
+    const db = new Database(':memory:');
+    initSchema(db);
+    const oldest = insertOpportunity(db, {
+      cluster_key: 'client-docs',
+      slug: 'client-docs-oldest',
+      title: 'Client document collection',
+      thesis: 'Bookkeepers need guided client document collection.',
+    });
+    const newer = insertOpportunity(db, {
+      cluster_key: 'client-docs',
+      slug: 'client-docs-newer',
+      title: 'Client document collection workflow',
+      thesis: 'Bookkeepers need guided client document collection.',
+    });
+
+    const oldestResult = findOpportunityDuplicate(db, {
+      id: oldest,
+      cluster_key: 'client-docs',
+      slug: 'client-docs-oldest',
+      title: 'Client document collection',
+      thesis: 'Bookkeepers need guided client document collection.',
+    });
+    const newerResult = findOpportunityDuplicate(db, {
+      id: newer,
+      cluster_key: 'client-docs',
+      slug: 'client-docs-newer',
+      title: 'Client document collection workflow',
+      thesis: 'Bookkeepers need guided client document collection.',
+    });
+
+    expect(oldestResult.duplicate).toBe(false);
+    expect(newerResult.matchedOpportunityId).toBe(oldest);
+  });
+
+  it('collapses all three same-batch addiction-recovery variants onto the oldest active canonical', () => {
+    const db = new Database(':memory:');
+    initSchema(db);
+    const canonical = insertOpportunity(db, {
+      cluster_key: 'addiction-recovery',
+      slug: 'out-know',
+      title: 'Addiction recovery guided support',
+      thesis: 'People in addiction recovery need guided support.',
+    });
+    insertOpportunity(db, {
+      cluster_key: 'addiction-recovery',
+      lifecycle_stage: 'rejected',
+      slug: 'out-people',
+      title: 'Addiction recovery guided people support',
+      thesis: 'People in addiction recovery need guided support.',
+    });
+    const pipeline = insertOpportunity(db, {
+      cluster_key: 'addiction-recovery',
+      slug: 'out-pipeline',
+      title: 'Addiction recovery guided support pipeline',
+      thesis: 'People in addiction recovery need guided support.',
+    });
+
+    const result = findOpportunityDuplicate(db, {
+      id: pipeline,
+      cluster_key: 'addiction-recovery',
+      slug: 'out-pipeline',
+      title: 'Addiction recovery guided support pipeline',
+      thesis: 'People in addiction recovery need guided support.',
+    });
+
+    expect(result.duplicate).toBe(true);
+    expect(result.matchedOpportunityId).toBe(canonical);
+    expect(result.action).toBe('attach_to_active');
+  });
+
+  it('matches equivalent normalized source crossposts with different hashes', () => {
+    const db = new Database(':memory:'); initSchema(db);
+    const canonical = insertOpportunity(db, { cluster_key: 'client-docs', lifecycle_stage: 'review_gate', slug: 'client-docs', title: 'Client document collection', thesis: 'Bookkeepers chase client documents.' });
+    const candidate = insertOpportunity(db, { cluster_key: 'document-chasing', slug: 'bookkeeper-chasing', title: 'Bookkeeper document chasing', thesis: 'Accountants chase missing customer paperwork.' });
+    const now = '2026-06-01T00:00:00.000Z';
+    const add = (external: string, text: string, hash: string) => Number(db.prepare("INSERT INTO source_items (source,external_id,title,text,timestamp_utc,ingested_at_utc,raw_path,content_hash) VALUES ('reddit',?,'same',?,?,?,'/tmp/x',?)").run(external,text,now,now,hash).lastInsertRowid);
+    const a = add('a', 'I hate chasing missing client documents every Friday!', 'different-a');
+    const b = add('b', 'I hate chasing missing client documents every Friday.', 'different-b');
+    db.prepare('INSERT INTO opportunity_sources (opportunity_id, source_item_id) VALUES (?,?)').run(canonical, a);
+    db.prepare('INSERT INTO opportunity_sources (opportunity_id, source_item_id) VALUES (?,?)').run(candidate, b);
+    const result = findOpportunityDuplicate(db, { id: candidate, cluster_key: 'document-chasing', slug: 'bookkeeper-chasing', title: 'Bookkeeper document chasing', thesis: 'Accountants chase missing customer paperwork.' });
+    expect(result.duplicate).toBe(true);
+    expect(result.reasons).toContain('shared_source_signature');
+  });
   it('treats a candidate sharing source evidence with a rejected opportunity as duplicate', () => {
     const db = new Database(':memory:');
     initSchema(db);

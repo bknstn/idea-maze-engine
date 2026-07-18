@@ -84,7 +84,9 @@ export function getParentRunIdFromEnv(): number | null {
 }
 
 export function recordRunEvent(db: Database.Database, input: RunEventInput): void {
-  if (!Number.isFinite(Number(input.runId))) {
+  if (input.runId === undefined) return;
+  const runId = input.runId === null ? null : Number(input.runId);
+  if (runId !== null && !Number.isFinite(runId)) {
     return;
   }
 
@@ -102,7 +104,7 @@ export function recordRunEvent(db: Database.Database, input: RunEventInput): voi
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    Number(input.runId),
+    runId,
     input.opportunityId ?? null,
     input.eventType,
     input.stage ?? null,

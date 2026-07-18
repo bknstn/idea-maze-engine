@@ -7,6 +7,19 @@ export const HARVEST_PROMPT_NAME = 'idea-maze-harvest';
 export const HARVEST_PROMPT_VERSION = '2026-04-20.1';
 export const RESEARCH_PROMPT_NAME = 'idea-maze-research';
 export const RESEARCH_PROMPT_VERSION = '2026-04-20.1';
+export const EVIDENCE_ALIGNMENT_PROMPT_NAME = 'idea-maze-evidence-alignment';
+export const EVIDENCE_ALIGNMENT_PROMPT_VERSION = '2026-07-18.1';
+
+export const EVIDENCE_ALIGNMENT_SYSTEM_PROMPT = `You are a conservative evidence auditor. Classify whether each primary source supports the exact opportunity thesis. Never infer pain or a buyer. Quotes must be copied verbatim from the source. Promotional founder claims are promo, not buyer evidence. Search results are context only. A source that says the current output/workaround is sufficient contradicts a thesis claiming it is inadequate.`;
+
+export function buildEvidenceAlignmentUserPrompt(input: {
+  title: string;
+  thesis: string;
+  sources: Array<{ id: number; source: string; title: string | null; text: string }>;
+}): string {
+  const sources = input.sources.map((source) => `SOURCE ${source.id} [${source.source}]\nTitle: ${source.title ?? 'None'}\n${source.text.slice(0, 3000)}`).join('\n\n');
+  return `Title: ${input.title}\nThesis: ${input.thesis}\n\n${sources}\n\nReturn JSON {"cards":[...]} with exactly one card per source. Each card must contain: source_id, relation (supports|contradicts|context|irrelevant|promo), buyer_present (boolean), pain_quote, wtp_quote, time_loss_quote, workaround_quote (exact source substrings or null), contradiction_resolved (boolean), and a short reason. A support requires an identifiable buyer and an exact pain quote.`;
+}
 
 export const HARVEST_SYSTEM_PROMPT = `You are an analyst extracting product opportunity signals from raw source content.
 
