@@ -2,7 +2,6 @@ import type Database from 'better-sqlite3';
 
 import {
   alignOpportunityEvidence,
-  evaluateEvidenceAlignment,
   type EvidenceAlignmentResult,
 } from './evidence-alignment.ts';
 import {
@@ -60,10 +59,6 @@ export function fetchReviewGateSources(
     ORDER BY si.id
   `).all(opportunityId) as EvidenceSourceSummary[];
 }
-
-/** Conservative, network-free aligner for inspection and revalidation commands. */
-export const unavailableEvidenceAligner: EvidenceAligner = async ({ sources }) =>
-  evaluateEvidenceAlignment(sources, null);
 
 export async function evaluateReviewGateCandidate(
   db: Database.Database,
@@ -144,7 +139,7 @@ export async function revalidateReviewGate(
     ORDER BY o.id
   `).all() as Candidate[];
   const results: ReviewGateEvaluation[] = [];
-  const aligner = options.aligner ?? unavailableEvidenceAligner;
+  const aligner = options.aligner ?? alignOpportunityEvidence;
 
   for (const candidate of candidates) {
     const evaluation = await evaluateReviewGateCandidate(db, candidate, aligner);
