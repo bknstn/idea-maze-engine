@@ -22,6 +22,21 @@ export function setAppState(key: string, value: any): void {
   ).run(key, JSON.stringify(value), now);
 }
 
+export function setAppStates(values: Record<string, any>): void {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const statement = db.prepare(
+    `INSERT INTO app_state (key, value_json, updated_at_utc)
+     VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at_utc = excluded.updated_at_utc`,
+  );
+  db.transaction(() => {
+    for (const [key, value] of Object.entries(values)) {
+      statement.run(key, JSON.stringify(value), now);
+    }
+  })();
+}
+
 // --- Source Items ---
 
 export interface SourceItemRow {
@@ -105,7 +120,9 @@ export function upsertSourceItem(item: UpsertSourceItem): {
   db.prepare(
     `
     UPDATE source_items
-    SET text = ?, title = ?, metadata_json = ?, content_hash = ?, raw_path = ?
+    SET text = ?, title = ?, metadata_json = ?, content_hash = ?, raw_path = ?,
+        canonical_url = COALESCE(?, canonical_url),
+        channel_or_label = COALESCE(?, channel_or_label)
     WHERE source = ? AND external_id = ?
   `,
   ).run(
@@ -114,6 +131,8 @@ export function upsertSourceItem(item: UpsertSourceItem): {
     metaStr,
     item.content_hash,
     item.raw_path,
+    item.canonical_url ?? null,
+    item.channel_or_label ?? null,
     item.source,
     item.external_id,
   );
