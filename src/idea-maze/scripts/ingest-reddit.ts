@@ -2,7 +2,8 @@
  * Reddit ingestion — fetches recent posts from configured subreddits.
  *
  * Reads subreddit list from app_state key "reddit_subreddits".
- * Falls back to RSS/Atom feed if JSON API returns 403/429.
+ * Rotates through diversified shards and fetches each shard as one Atom feed
+ * to stay within Reddit's anonymous RSS rate limit.
  *
  * Usage: tsx ingest-reddit.ts
  *
@@ -17,11 +18,20 @@ import { getDb, closeDb } from "./lib/db.ts";
 import { DATA_DIR } from "./lib/paths.ts";
 import { initSchema } from "./lib/schema.ts";
 import { scoreSourceItem } from "./lib/scoring.ts";
-import { upsertSourceItem, getAppState, setAppState } from "./lib/queries.ts";
+import { upsertSourceItem, getAppState, setAppStates } from "./lib/queries.ts";
+import {
+  buildMultiSubredditPath,
+  getRedditRetryDelayMs,
+  parseRedditAtomEntryUrl,
+  selectRedditHarvestShard,
+  sleepWithSafeTimeout,
+  subredditFromEntryUrl,
+} from "./lib/reddit-harvest.ts";
 
 const USER_AGENT = "idea-maze-engine/1.0";
 const DEFAULT_HOURS = 24;
 const DEFAULT_MAX_POSTS = 50;
+const DEFAULT_SUBREDDITS_PER_RUN = 6;
 
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
@@ -72,8 +82,7 @@ function parseAtomText(xml: string): Array<{
       const m = block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`));
       return m ? m[1].trim() : "";
     };
-    const linkMatch = block.match(/<link[^>]*rel="alternate"[^>]*href="([^"]+)"/);
-    const url = linkMatch ? linkMatch[1] : null;
+    const url = parseRedditAtomEntryUrl(block);
 
     // Strip HTML from content
     const content = tag("content") || tag("summary");
@@ -243,12 +252,20 @@ async function fetchSubredditRss(
   subreddit: string,
   cutoff: number,
   maxPosts: number,
+  retryRateLimit = true,
 ): Promise<PostResult[]> {
-  const url = `https://www.reddit.com/r/${subreddit}/new/.rss`;
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+  const url = `https://old.reddit.com/r/${subreddit}/new/.rss`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT, Accept: "application/atom+xml" },
+  });
+  if (res.status === 429 && retryRateLimit) {
+    const delayMs = getRedditRetryDelayMs(res.headers);
+    console.warn(`Reddit RSS rate limited; retrying in ${Math.ceil(delayMs / 1000)}s...`);
+    await sleepWithSafeTimeout(delayMs);
+    return fetchSubredditRss(subreddit, cutoff, maxPosts, false);
+  }
   if (!res.ok) {
-    console.error(`Reddit RSS error for r/${subreddit}: ${res.status}`);
-    return [];
+    throw new Error(`Reddit RSS error for r/${subreddit}: ${res.status}`);
   }
 
   const xml = await res.text();
@@ -266,13 +283,15 @@ async function fetchSubredditRss(
     const text = normalizeWhitespace(entry.text) || title;
     if (!text) continue;
 
+    const actualSubreddit = subredditFromEntryUrl(entry.url);
+    if (!actualSubreddit) continue;
     const record = {
-      subreddit: `r/${subreddit}`,
+      subreddit: `r/${actualSubreddit}`,
       post_id: postId,
       fullname,
       created_at_utc: timestamp.toISOString(),
       author: entry.author ? `u/${entry.author}` : null,
-      title: title || `Post in r/${subreddit}`,
+      title: title || `Post in r/${actualSubreddit}`,
       text,
       permalink: entry.url,
       score: null,
@@ -336,60 +355,84 @@ async function main() {
   const hoursWindow = DEFAULT_HOURS;
   const maxPosts = DEFAULT_MAX_POSTS;
   const cutoff = Date.now() / 1000 - hoursWindow * 3600;
+  const cursor = Number(getAppState("reddit_harvest_cursor") ?? 0);
+  const shard = selectRedditHarvestShard(subreddits, cursor, DEFAULT_SUBREDDITS_PER_RUN);
+  const multiFeed = buildMultiSubredditPath(shard.selected);
 
   let totalNew = 0;
   let totalUpdated = 0;
+  const fetchedBySubreddit: Record<string, number> = {};
 
-  for (const subreddit of subreddits) {
-    console.log(`Fetching r/${subreddit}...`);
-    const posts = await fetchSubredditJson(subreddit, cutoff, maxPosts);
+  console.log(
+    `Fetching Reddit shard ${shard.cursor + 1}/${shard.shardCount}: ${shard.selected.map((name) => `r/${name}`).join(", ")}...`,
+  );
+  const posts = await fetchSubredditRss(multiFeed, cutoff, maxPosts);
 
-    for (const post of posts) {
-      // Compute harvest score
-      const scoring = scoreSourceItem({
-        source: post.source,
-        author: post.author,
-        title: post.title,
-        text: post.text,
-        canonical_url: post.canonicalUrl,
-        metadata: post.metadata,
-      });
+  for (const post of posts) {
+    // Compute harvest score
+    const scoring = scoreSourceItem({
+      source: post.source,
+      author: post.author,
+      title: post.title,
+      text: post.text,
+      canonical_url: post.canonicalUrl,
+      metadata: post.metadata,
+    });
 
-      // Merge scoring into metadata
-      const enrichedMeta = {
-        ...post.metadata,
-        harvest_score: scoring.score,
-        harvest_signals: scoring.signals,
-        source_patterns: scoring.patterns,
-        harvest_breakdown: scoring.breakdown,
-      };
+    // Merge scoring into metadata
+    const enrichedMeta = {
+      ...post.metadata,
+      harvest_score: scoring.score,
+      harvest_signals: scoring.signals,
+      source_patterns: scoring.patterns,
+      harvest_breakdown: scoring.breakdown,
+    };
 
-      const { isNew } = upsertSourceItem({
-        source: post.source,
-        external_id: post.externalId,
-        thread_ref: post.threadRef,
-        author: post.author,
-        title: post.title,
-        text: post.text,
-        canonical_url: post.canonicalUrl,
-        channel_or_label: post.channelOrLabel,
-        timestamp_utc: post.timestampUtc.toISOString(),
-        raw_path: post.rawPath,
-        content_hash: post.contentHash,
-        sensitivity: post.sensitivity,
-        metadata_json: enrichedMeta,
-      });
+    const { isNew } = upsertSourceItem({
+      source: post.source,
+      external_id: post.externalId,
+      thread_ref: post.threadRef,
+      author: post.author,
+      title: post.title,
+      text: post.text,
+      canonical_url: post.canonicalUrl,
+      channel_or_label: post.channelOrLabel,
+      timestamp_utc: post.timestampUtc.toISOString(),
+      raw_path: post.rawPath,
+      content_hash: post.contentHash,
+      sensitivity: post.sensitivity,
+      metadata_json: enrichedMeta,
+    });
 
-      if (isNew) totalNew++;
-      else totalUpdated++;
-    }
-
-    console.log(`  r/${subreddit}: ${posts.length} posts fetched`);
+    if (isNew) totalNew++;
+    else totalUpdated++;
+    fetchedBySubreddit[post.channelOrLabel] = (fetchedBySubreddit[post.channelOrLabel] ?? 0) + 1;
   }
 
-  setAppState("reddit_last_harvest", new Date().toISOString());
+  const harvestedAt = new Date().toISOString();
+  setAppStates({
+    reddit_harvest_cursor: shard.nextCursor,
+    reddit_last_harvest: harvestedAt,
+    reddit_last_harvest_summary: {
+      harvested_at_utc: harvestedAt,
+      configured_count: subreddits.length,
+      shard_index: shard.cursor,
+      shard_count: shard.shardCount,
+      selected_subreddits: shard.selected,
+      next_cursor: shard.nextCursor,
+      fetched_count: posts.length,
+      fetched_by_subreddit: fetchedBySubreddit,
+      new_count: totalNew,
+      updated_count: totalUpdated,
+    },
+  });
 
-  console.log(`\nDone. New: ${totalNew}, Updated: ${totalUpdated}`);
+  console.log(
+    `  Coverage: ${Object.entries(fetchedBySubreddit).map(([name, count]) => `${name}=${count}`).join(", ") || "none"}`,
+  );
+  console.log(
+    `\nDone. New: ${totalNew}, Updated: ${totalUpdated}, Coverage: ${Object.keys(fetchedBySubreddit).length}/${shard.selected.length}, Next shard: ${shard.nextCursor + 1}/${shard.shardCount}`,
+  );
   closeDb();
 }
 
