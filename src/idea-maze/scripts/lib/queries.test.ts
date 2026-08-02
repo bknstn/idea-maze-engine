@@ -91,4 +91,76 @@ describe('getCounts', () => {
 
     expect(getCounts().runs_pending).toBe(2);
   });
+
+  it('refreshes mutable source provenance when an existing item is re-ingested', async () => {
+    const { getDb } = await import('./db.ts');
+    const { initSchema } = await import('./schema.ts');
+    const { upsertSourceItem } = await import('./queries.ts');
+
+    const db = getDb();
+    initSchema(db);
+    const base = {
+      source: 'reddit',
+      external_id: 't3_example',
+      text: 'same text',
+      title: 'Example',
+      timestamp_utc: '2026-08-02T10:00:00.000Z',
+      content_hash: 'hash',
+      sensitivity: 'normal',
+    };
+
+    upsertSourceItem({
+      ...base,
+      canonical_url: null,
+      channel_or_label: 'r/combined+feed',
+      raw_path: '/tmp/combined.json',
+      metadata_json: { subreddit: 'r/combined+feed' },
+    });
+    upsertSourceItem({
+      ...base,
+      canonical_url: 'https://old.reddit.com/r/productivity/comments/example/post/',
+      channel_or_label: 'r/productivity',
+      raw_path: '/tmp/productivity.json',
+      metadata_json: { subreddit: 'r/productivity' },
+    });
+
+    const row = db.prepare(`
+      SELECT canonical_url, channel_or_label, raw_path,
+             json_extract(metadata_json, '$.subreddit') subreddit
+      FROM source_items WHERE source = 'reddit' AND external_id = 't3_example'
+    `).get();
+    expect(row).toEqual({
+      canonical_url: 'https://old.reddit.com/r/productivity/comments/example/post/',
+      channel_or_label: 'r/productivity',
+      raw_path: '/tmp/productivity.json',
+      subreddit: 'r/productivity',
+    });
+  });
+
+  it('rolls back all app-state writes when one write fails', async () => {
+    const { getDb } = await import('./db.ts');
+    const { initSchema } = await import('./schema.ts');
+    const { getAppState, setAppState, setAppStates } = await import('./queries.ts');
+
+    const db = getDb();
+    initSchema(db);
+    setAppState('reddit_harvest_cursor', 2);
+    db.exec(`
+      CREATE TRIGGER fail_reddit_harvest_summary
+      BEFORE INSERT ON app_state
+      WHEN NEW.key = 'reddit_last_harvest_summary'
+      BEGIN
+        SELECT RAISE(ABORT, 'summary write failed');
+      END
+    `);
+
+    expect(() => setAppStates({
+      reddit_harvest_cursor: 3,
+      reddit_last_harvest: '2026-08-02T10:00:00.000Z',
+      reddit_last_harvest_summary: { next_cursor: 3 },
+    })).toThrow('summary write failed');
+    expect(getAppState('reddit_harvest_cursor')).toBe(2);
+    expect(getAppState('reddit_last_harvest')).toBeNull();
+    expect(getAppState('reddit_last_harvest_summary')).toBeNull();
+  });
 });
