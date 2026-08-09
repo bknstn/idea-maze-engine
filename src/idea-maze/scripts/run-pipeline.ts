@@ -1,7 +1,7 @@
 /**
  * Run the full harvest pipeline with run-lock protection.
  *
- * Stages: ingest-reddit → extract-insights → refresh-opportunities → process-opportunities
+ * Stages: ingest-reddit → extract-insights → refresh-opportunities → process-opportunities → inspect-artifact-retention
  *
  * Used by scheduled tasks to run the pipeline safely without overlap.
  * Skips stages that fail and reports results.
@@ -125,6 +125,13 @@ function main() {
         'process-opportunities.ts',
         pipelineRunId,
         PROCESS_OPPORTUNITIES_TIMEOUT_MS,
+      ),
+    );
+    results.push(
+      runStage(
+        'inspect-artifact-retention',
+        'inspect-artifact-retention.ts',
+        pipelineRunId,
       ),
     );
   } finally {
