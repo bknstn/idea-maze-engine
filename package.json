@@ -25,6 +25,7 @@
     "idea:artifacts": "tsx src/idea-maze/scripts/list-artifacts.ts",
     "idea:explore": "tsx src/idea-maze/scripts/explore-opportunity.ts",
     "idea:explorations": "tsx src/idea-maze/scripts/list-explorations.ts",
+    "idea:retention": "tsx src/idea-maze/scripts/inspect-artifact-retention.ts",
     "idea:review": "tsx src/idea-maze/scripts/apply-human-review.ts"
   },
   "dependencies": {
