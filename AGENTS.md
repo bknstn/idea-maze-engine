@@ -1,0 +1,89 @@
+# Idea Maze Agent Guide
+
+This file provides vendor-neutral guidance for coding agents working in this repository.
+
+## Commands
+
+```bash
+npm run typecheck          # TypeScript type checking (tsc --noEmit)
+npm test                   # Run tests once (Vitest)
+npm run test:watch         # Vitest watch mode
+npm run verify             # typecheck + tests
+
+# Pipeline stages (run individually)
+npm run idea:ingest:reddit
+npm run idea:ingest:gmail
+npm run idea:ingest:telegram
+npm run idea:extract       # LLM insight extraction
+npm run idea:refresh       # Opportunity clustering + scoring
+npm run idea:process       # Auto-research high-scoring opportunities
+
+# CLI commands
+npm run idea:run           # Full pipeline (all stages in sequence)
+npm run idea:status        # Summary report (supports --json)
+npm run idea:latest        # Top opportunities
+npm run idea:explain       # Details for a specific opportunity by slug
+npm run idea:research      # Manual research trigger
+npm run idea:artifacts     # List generated artifacts
+```
+
+## Architecture
+
+All source lives under `src/idea-maze/scripts/`. It is a four-stage ETL pipeline backed by a single SQLite database (`data/lab.db`).
+
+### Pipeline stages
+
+1. **Ingest** (`ingest-*.ts`) — Fetches raw content from Reddit, Gmail, and Telegram. Deduplicates on `(source, external_id)` with SHA256 hash change detection. Stores into `source_items`.
+
+2. **Extract** (`extract-insights.ts`) — Uses the configured extraction model in batches of eight to classify each source item into typed insights: `pain_point`, `demand_signal`, `workflow_gap`, `distribution_clue`, `willingness_to_pay`, `competitor_move`, `implementation_constraint`. Falls back to keyword heuristics when no LLM provider is configured.
+
+3. **Refresh** (`refresh-opportunities.ts`) — Groups insights by `cluster_key` (derived from top keywords), computes a weighted `market_score`, applies a learned `taste_adjustment`, and upserts into `opportunities`. Links opportunities to source items via `opportunity_sources`.
+
+4. **Process** (`process-opportunities.ts`) — Auto-researches opportunities with `final_score >= 9.0`. Calls `research-opportunity.ts`, which pulls cross-source evidence and drafts a markdown artifact with the configured research model.
+
+### Key library modules (`src/idea-maze/scripts/lib/`)
+
+| File | Responsibility |
+|------|---------------|
+| `db.ts` | SQLite singleton (WAL mode, foreign keys on); all DB operations are synchronous |
+| `schema.ts` | Schema initialization and migrations; FTS5 virtual tables with auto-sync triggers |
+| `queries.ts` | Upsert, fetch, and aggregate queries |
+| `llm.ts` | Provider-neutral task routing, model configuration, and provider adapters |
+| `prompts.ts` | System and user prompt templates for extraction and research drafts |
+| `scoring.ts` | Harvest scoring (keyword patterns and weights per signal type) |
+| `taste.ts` | Taste profile learning and future score adjustment |
+| `opportunity-state.ts` | Lifecycle transitions and state machine logic |
+| `opportunity-policy.ts` | Score bucketing (`>=9` publishes, lower scores are ignored) |
+| `research.ts` | Draft generation from clustered evidence and artifact creation |
+| `run-events.ts` | Run lifecycle, event recording, and structured audit trail |
+| `paths.ts` | Data directory resolution (`IDEA_MAZE_HOME` override) |
+
+### LLM provider boundary
+
+Pipeline code selects the `extraction`, `research`, or `exploration` task. It must not branch on vendor names or translate one vendor's model identifiers into another vendor's identifiers.
+
+Provider-specific authentication, request formatting, response parsing, and error handling belong in an `LlmProviderAdapter`. Register adapters through `registerLlmProvider`; select one with `IDEA_MAZE_LLM_PROVIDER`. Do not add implicit cross-provider fallback. Model selection stays vendor-neutral through the three task-specific environment variables below.
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Credential used by the active OpenAI adapter |
+| `IDEA_MAZE_LLM_PROVIDER` | Registered provider name; defaults to `openai` |
+| `IDEA_MAZE_EXTRACTION_MODEL` | Extraction model; defaults to `gpt-5-mini` |
+| `IDEA_MAZE_RESEARCH_MODEL` | Research model; defaults to `gpt-5.1` |
+| `IDEA_MAZE_EXPLORATION_MODEL` | Exploration model; defaults to `gpt-5.5` |
+| `TAVILY_API_KEY` | Optional web-search enrichment during research |
+| `IDEA_MAZE_HOME` | Data-directory root override; defaults to the project root |
+
+### Data model highlights
+
+- **`source_items`** -> **`insights`** -> **`opportunities`** is the core chain.
+- Opportunity lifecycle: `scored -> shortlisted -> researching -> review_gate -> artifact -> approved/rejected -> archived`.
+- `taste_profile` stores learned feature weights updated by approval records.
+- FTS5 virtual tables are maintained by triggers; no manual sync is needed.
+- `app_state` holds runtime configuration rather than environment variables or config files.
+
+### Testing
+
+Tests use real SQLite temporary or in-memory databases. Each test sets `IDEA_MAZE_HOME` to an isolated temporary directory and cleans up afterward. LLM HTTP behavior is unit-tested with mocked `fetch`.

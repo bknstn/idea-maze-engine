@@ -1,28 +1,48 @@
 /**
- * Minimal LLM API client.
+ * Provider-neutral LLM orchestration.
  *
- * Uses Anthropic when ANTHROPIC_API_KEY is available. Falls back to OpenAI
- * when OPENAI_API_KEY is available. Falls back gracefully when no provider key
- * is available.
+ * Pipeline stages select a task, never a vendor model. Each provider adapter
+ * owns its authentication, request, and response formats. Models remain
+ * independently configurable for extraction, research, and exploration.
  */
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-
-export const EXTRACTION_MODEL = "claude-haiku-4-5-20251001"; // fast + cheap for bulk extraction
-export const RESEARCH_MODEL = "claude-sonnet-4-6"; // full reasoning for research drafts
-export const EXPLORATION_MODEL = "claude-opus-4-5"; // deeper reasoning for exploration briefs
-const OPENAI_EXTRACTION_MODEL = "gpt-5-mini";
-const OPENAI_RESEARCH_MODEL = "gpt-5.1";
-const OPENAI_EXPLORATION_MODEL = "gpt-5.5";
 const RESEARCH_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 
-type LlmProvider = "anthropic" | "openai";
+export type LlmTask = "extraction" | "research" | "exploration";
+
+export interface LlmRequest {
+  maxTokens: number;
+  model: string;
+  signal?: AbortSignal;
+  systemPrompt: string;
+  task: LlmTask;
+  userPrompt: string;
+}
+
+export interface LlmProviderAdapter {
+  readonly displayName: string;
+  readonly name: string;
+  generateJson<T>(request: LlmRequest): Promise<T>;
+  isConfigured(): boolean;
+}
+
+const DEFAULT_MODELS: Record<LlmTask, string> = {
+  extraction: "gpt-5-mini",
+  research: "gpt-5.1",
+  exploration: "gpt-5.5",
+};
+
+const MODEL_ENV: Record<LlmTask, string> = {
+  extraction: "IDEA_MAZE_EXTRACTION_MODEL",
+  research: "IDEA_MAZE_RESEARCH_MODEL",
+  exploration: "IDEA_MAZE_EXPLORATION_MODEL",
+};
 
 class LlmApiError extends Error {
   constructor(
     message: string,
-    readonly provider: LlmProvider,
+    readonly provider: string,
     readonly status: number,
     readonly body: string,
   ) {
@@ -31,10 +51,75 @@ class LlmApiError extends Error {
   }
 }
 
-export function getConfiguredProvider(): LlmProvider | null {
-  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
-  if (process.env.OPENAI_API_KEY) return "openai";
-  return null;
+function extractJson<T>(text: string): T {
+  const jsonMatch =
+    text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? text.match(/(\{[\s\S]*\})/);
+  if (!jsonMatch) {
+    throw new Error(`No JSON found in LLM response: ${text.slice(0, 200)}`);
+  }
+  return JSON.parse(jsonMatch[1].trim()) as T;
+}
+
+const openAiProvider: LlmProviderAdapter = {
+  name: "openai",
+  displayName: "OpenAI",
+  isConfigured: () => Boolean(process.env.OPENAI_API_KEY),
+  async generateJson<T>(request: LlmRequest): Promise<T> {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+
+    const res = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: request.model,
+        messages: [
+          { role: "system", content: request.systemPrompt },
+          { role: "user", content: request.userPrompt },
+        ],
+        max_completion_tokens: request.maxTokens,
+      }),
+      signal: request.signal,
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new LlmApiError(
+        `OpenAI API ${res.status}: ${body}`,
+        "openai",
+        res.status,
+        body,
+      );
+    }
+
+    const data = (await res.json()) as any;
+    const text: string = data.choices?.[0]?.message?.content ?? "";
+    return extractJson<T>(text);
+  },
+};
+
+const providerRegistry = new Map<string, LlmProviderAdapter>();
+
+export function registerLlmProvider(adapter: LlmProviderAdapter): void {
+  providerRegistry.set(adapter.name, adapter);
+}
+
+registerLlmProvider(openAiProvider);
+
+function selectedProviderName(): string {
+  return process.env.IDEA_MAZE_LLM_PROVIDER?.trim() || "openai";
+}
+
+function selectedProvider(): LlmProviderAdapter | null {
+  return providerRegistry.get(selectedProviderName()) ?? null;
+}
+
+export function getConfiguredProvider(): string | null {
+  const provider = selectedProvider();
+  return provider?.isConfigured() ? provider.name : null;
 }
 
 export function isLlmConfigured(): boolean {
@@ -42,229 +127,99 @@ export function isLlmConfigured(): boolean {
 }
 
 export function getMissingLlmReason(): string {
-  return "No configured LLM provider (set ANTHROPIC_API_KEY or OPENAI_API_KEY)";
+  const providerName = selectedProviderName();
+  const provider = selectedProvider();
+  if (!provider) {
+    return `LLM provider "${providerName}" is not registered`;
+  }
+  return `LLM provider "${providerName}" is not configured`;
 }
 
-function modelFor(provider: LlmProvider, anthropicModel: string): string {
-  if (provider === "anthropic") {
-    if (anthropicModel === EXPLORATION_MODEL) return process.env.ANTHROPIC_EXPLORATION_MODEL ?? EXPLORATION_MODEL;
-    return anthropicModel;
-  }
-  if (anthropicModel === EXPLORATION_MODEL) {
-    return process.env.OPENAI_EXPLORATION_MODEL ?? OPENAI_EXPLORATION_MODEL;
-  }
-  if (anthropicModel === RESEARCH_MODEL) {
-    return process.env.OPENAI_RESEARCH_MODEL ?? OPENAI_RESEARCH_MODEL;
-  }
-  return process.env.OPENAI_EXTRACTION_MODEL ?? OPENAI_EXTRACTION_MODEL;
+export function getModel(task: LlmTask): string {
+  return process.env[MODEL_ENV[task]]?.trim() || DEFAULT_MODELS[task];
 }
 
 export function getExtractionModel(): string | null {
-  const provider = getConfiguredProvider();
-  return provider ? modelFor(provider, EXTRACTION_MODEL) : null;
+  return isLlmConfigured() ? getModel("extraction") : null;
 }
 
 export function getResearchModel(): string | null {
-  const provider = getConfiguredProvider();
-  return provider ? modelFor(provider, RESEARCH_MODEL) : null;
+  return isLlmConfigured() ? getModel("research") : null;
 }
 
 export function getExplorationModel(): string | null {
-  const provider = getConfiguredProvider();
-  return provider ? modelFor(provider, EXPLORATION_MODEL) : null;
+  return isLlmConfigured() ? getModel("exploration") : null;
 }
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
-function providerLabel(provider: LlmProvider): string {
-  return provider === "anthropic" ? "Anthropic" : "OpenAI";
-}
-
-function extractJson<T>(text: string): T {
-  const jsonMatch =
-    text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? text.match(/(\{[\s\S]*\})/);
-  if (!jsonMatch) {
-    throw new Error(`No JSON found in LLM response: ${text.slice(0, 200)}`);
-  }
-
-  return JSON.parse(jsonMatch[1].trim()) as T;
-}
-
-async function callAnthropicApi<T>(
-  model: string,
-  systemPrompt: string,
-  userPrompt: string,
-  maxTokens: number,
-  signal?: AbortSignal,
-): Promise<T> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-    signal,
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new LlmApiError(
-      `Anthropic API ${res.status}: ${body}`,
-      "anthropic",
-      res.status,
-      body,
-    );
-  }
-
-  const data = (await res.json()) as any;
-  const text: string = data.content?.[0]?.text ?? "";
-  return extractJson<T>(text);
-}
-
-async function callOpenAiApi<T>(
-  model: string,
-  systemPrompt: string,
-  userPrompt: string,
-  maxTokens: number,
-  signal?: AbortSignal,
-): Promise<T> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY not set");
-
-  const res = await fetch(OPENAI_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_completion_tokens: maxTokens,
-    }),
-    signal,
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new LlmApiError(
-      `OpenAI API ${res.status}: ${body}`,
-      "openai",
-      res.status,
-      body,
-    );
-  }
-
-  const data = (await res.json()) as any;
-  const text: string = data.choices?.[0]?.message?.content ?? "";
-  return extractJson<T>(text);
-}
-
-function isRetryableApiError(error: unknown): error is LlmApiError {
-  return (
-    error instanceof LlmApiError &&
-    (error.status === 429 || error.status >= 500)
-  );
-}
-
 async function callApi<T>(
-  anthropicModel: string,
+  task: LlmTask,
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 4096,
   timeoutMs?: number,
 ): Promise<T> {
-  const provider = getConfiguredProvider();
-  if (!provider) throw new Error(getMissingLlmReason());
+  const provider = selectedProvider();
+  if (!provider?.isConfigured()) throw new Error(getMissingLlmReason());
 
   const controller = timeoutMs ? new AbortController() : null;
   const timeoutId = controller
     ? setTimeout(() => controller.abort(), timeoutMs)
     : null;
-  const model = modelFor(provider, anthropicModel);
 
   try {
-    if (provider === "anthropic") {
-      try {
-        return await callAnthropicApi<T>(
-          model,
-          systemPrompt,
-          userPrompt,
-          maxTokens,
-          controller?.signal,
-        );
-      } catch (err) {
-        if (process.env.OPENAI_API_KEY && isRetryableApiError(err)) {
-          return await callOpenAiApi<T>(
-            modelFor("openai", anthropicModel),
-            systemPrompt,
-            userPrompt,
-            maxTokens,
-            controller?.signal,
-          );
-        }
-        throw err;
-      }
-    }
-    return await callOpenAiApi<T>(
-      model,
+    return await provider.generateJson<T>({
+      task,
+      model: getModel(task),
       systemPrompt,
       userPrompt,
       maxTokens,
-      controller?.signal,
-    );
+      signal: controller?.signal,
+    });
   } catch (err) {
     if (timeoutMs && isAbortError(err)) {
       throw new Error(
-        `${providerLabel(provider)} API request timed out after ${timeoutMs}ms`,
+        `${provider.displayName} API request timed out after ${timeoutMs}ms`,
       );
     }
     throw err;
   } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
-/** Single-item extraction using the configured extraction model */
+/** Single-item extraction using the configured extraction model. */
 export async function generateJson<T>(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<T> {
-  return callApi<T>(EXTRACTION_MODEL, systemPrompt, userPrompt);
+  return callApi<T>("extraction", systemPrompt, userPrompt);
 }
 
-/** Cheap structured source-to-thesis classification through centralized provider routing. */
+/** Cheap structured source-to-thesis classification. */
 export async function generateEvidenceAlignmentJson<T>(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<T> {
-  return callApi<T>(EXTRACTION_MODEL, systemPrompt, userPrompt, 4096, RESEARCH_REQUEST_TIMEOUT_MS);
+  return callApi<T>(
+    "extraction",
+    systemPrompt,
+    userPrompt,
+    4096,
+    RESEARCH_REQUEST_TIMEOUT_MS,
+  );
 }
 
-/** Research drafting using the configured research model */
+/** Research drafting using the configured research model. */
 export async function generateResearchJson<T>(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<T> {
   return callApi<T>(
-    RESEARCH_MODEL,
+    "research",
     systemPrompt,
     userPrompt,
     8192,
@@ -272,13 +227,13 @@ export async function generateResearchJson<T>(
   );
 }
 
-/** Exploration brief generation using the configured exploration model */
+/** Exploration brief generation using the configured exploration model. */
 export async function generateExplorationJson<T>(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<T> {
   return callApi<T>(
-    EXPLORATION_MODEL,
+    "exploration",
     systemPrompt,
     userPrompt,
     8192,
@@ -286,12 +241,12 @@ export async function generateExplorationJson<T>(
   );
 }
 
-/** Batch extraction: sends up to BATCH_SIZE items in one extraction-model call */
+/** Batch extraction: sends up to BATCH_SIZE items in one extraction-model call. */
 export const EXTRACTION_BATCH_SIZE = 8;
 
 export async function generateBatchJson<T>(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<T> {
-  return callApi<T>(EXTRACTION_MODEL, systemPrompt, userPrompt, 8192);
+  return callApi<T>("extraction", systemPrompt, userPrompt, 8192);
 }

@@ -9,11 +9,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('./llm.ts', () => ({
-  RESEARCH_MODEL: 'claude-sonnet-4-6',
   generateResearchJson: mocks.generateResearchJson,
-  getMissingLlmReason: () =>
-    'No configured LLM provider (set ANTHROPIC_API_KEY or OPENAI_API_KEY)',
-  getResearchModel: () => 'claude-sonnet-4-6',
+  getMissingLlmReason: () => 'LLM provider "openai" is not configured',
+  getResearchModel: () => 'gpt-5.1',
   isLlmConfigured: () => true,
 }));
 
@@ -114,7 +112,7 @@ describe('researchOpportunity', () => {
 
   it('quarantines fallback template drafts away from the review gate without publishing', async () => {
     mocks.generateResearchJson.mockRejectedValue(
-      new Error('Anthropic API request timed out after 120000ms'),
+      new Error('OpenAI API request timed out after 120000ms'),
     );
 
     const { getDb } = await import('./db.ts');

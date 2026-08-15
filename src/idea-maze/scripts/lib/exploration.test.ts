@@ -11,10 +11,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('./llm.ts', () => ({
-  EXPLORATION_MODEL: 'claude-opus-4-5',
   generateExplorationJson: mocks.generateExplorationJson,
-  getExplorationModel: () => 'claude-opus-4-5',
-  getMissingLlmReason: () => 'No configured LLM provider (set ANTHROPIC_API_KEY or OPENAI_API_KEY)',
+  getExplorationModel: () => 'gpt-5.5',
+  getMissingLlmReason: () => 'LLM provider "openai" is not configured',
   isLlmConfigured: () => true,
 }));
 

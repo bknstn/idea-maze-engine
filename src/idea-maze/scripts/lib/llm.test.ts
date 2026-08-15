@@ -1,27 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("generateResearchJson", () => {
+import type { LlmRequest } from "./llm.ts";
+
+describe("provider-neutral LLM routing", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetModules();
-    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.OPENAI_API_KEY = "openai-test-key";
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     global.fetch = originalFetch;
-    delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_EXPLORATION_MODEL;
-    delete process.env.ANTHROPIC_EXPLORATION_MODEL;
+    delete process.env.IDEA_MAZE_LLM_PROVIDER;
+    delete process.env.IDEA_MAZE_EXTRACTION_MODEL;
+    delete process.env.IDEA_MAZE_RESEARCH_MODEL;
+    delete process.env.IDEA_MAZE_EXPLORATION_MODEL;
   });
 
-  it("uses OpenAI when Anthropic is missing and OpenAI is configured", async () => {
-    delete process.env.ANTHROPIC_API_KEY;
-    process.env.OPENAI_API_KEY = "openai-test-key";
+  it("uses OpenAI by default with task-specific models", async () => {
     vi.useRealTimers();
     global.fetch = vi.fn(async () =>
       new Response(
@@ -62,85 +63,75 @@ describe("generateResearchJson", () => {
     expect(body).not.toHaveProperty("max_tokens");
   });
 
-  it("prefers Anthropic when both Anthropic and OpenAI are configured", async () => {
-    process.env.OPENAI_API_KEY = "openai-test-key";
-    vi.useRealTimers();
-    global.fetch = vi.fn(async () =>
-      new Response(
-        JSON.stringify({ content: [{ text: JSON.stringify({ ok: true }) }] }),
-        { status: 200 },
-      ),
-    ) as typeof fetch;
+  it("supports independent vendor-neutral model overrides", async () => {
+    process.env.IDEA_MAZE_EXTRACTION_MODEL = "extract-model";
+    process.env.IDEA_MAZE_RESEARCH_MODEL = "research-model";
+    process.env.IDEA_MAZE_EXPLORATION_MODEL = "explore-model";
+    const {
+      getExtractionModel,
+      getResearchModel,
+      getExplorationModel,
+    } = await import("./llm.ts");
 
-    const { generateBatchJson, getConfiguredProvider } = await import(
-      "./llm.ts"
+    expect(getExtractionModel()).toBe("extract-model");
+    expect(getResearchModel()).toBe("research-model");
+    expect(getExplorationModel()).toBe("explore-model");
+  });
+
+  it("reports a missing credential without selecting another provider", async () => {
+    delete process.env.OPENAI_API_KEY;
+    const { getConfiguredProvider, getMissingLlmReason, isLlmConfigured } =
+      await import("./llm.ts");
+
+    expect(getConfiguredProvider()).toBeNull();
+    expect(isLlmConfigured()).toBe(false);
+    expect(getMissingLlmReason()).toBe(
+      'LLM provider "openai" is not configured',
     );
+  });
 
-    await expect(generateBatchJson("system", "user")).resolves.toEqual({
-      ok: true,
+  it("allows a different request format through a registered adapter", async () => {
+    process.env.IDEA_MAZE_LLM_PROVIDER = "portable-test";
+    delete process.env.OPENAI_API_KEY;
+    const { generateBatchJson, getConfiguredProvider, registerLlmProvider } =
+      await import("./llm.ts");
+    const generateJson = vi.fn(async (request: LlmRequest) => ({
+      model: request.model,
+      task: request.task,
+    }));
+    registerLlmProvider({
+      name: "portable-test",
+      displayName: "Portable Test",
+      isConfigured: () => true,
+      async generateJson<T>(request: LlmRequest): Promise<T> {
+        return (await generateJson(request)) as T;
+      },
     });
-    expect(getConfiguredProvider()).toBe("anthropic");
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://api.anthropic.com/v1/messages",
+
+    expect(getConfiguredProvider()).toBe("portable-test");
+    await expect(generateBatchJson("system", "user")).resolves.toEqual({
+      model: "gpt-5-mini",
+      task: "extraction",
+    });
+    expect(generateJson).toHaveBeenCalledWith(
       expect.objectContaining({
-        headers: expect.objectContaining({
-          "x-api-key": "test-key",
-        }),
+        maxTokens: 8192,
+        systemPrompt: "system",
+        userPrompt: "user",
       }),
     );
   });
 
-  it("falls back to OpenAI when Anthropic returns a retryable API error", async () => {
-    process.env.OPENAI_API_KEY = "openai-test-key";
-    vi.useRealTimers();
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            error: { type: "overloaded_error", message: "Overloaded" },
-          }),
-          { status: 529 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: JSON.stringify({ ok: true }) } }],
-          }),
-          { status: 200 },
-        ),
-      ) as typeof fetch;
+  it("does not silently fall back when the selected provider is unknown", async () => {
+    process.env.IDEA_MAZE_LLM_PROVIDER = "unknown";
+    const { generateBatchJson, getMissingLlmReason } = await import("./llm.ts");
 
-    const { generateBatchJson, getConfiguredProvider } = await import(
-      "./llm.ts"
+    expect(getMissingLlmReason()).toBe(
+      'LLM provider "unknown" is not registered',
     );
-
-    await expect(generateBatchJson("system", "user")).resolves.toEqual({
-      ok: true,
-    });
-    expect(getConfiguredProvider()).toBe("anthropic");
-    expect(global.fetch).toHaveBeenNthCalledWith(
-      1,
-      "https://api.anthropic.com/v1/messages",
-      expect.objectContaining({
-        body: expect.stringContaining('"model":"claude-haiku-4-5-20251001"'),
-      }),
+    await expect(generateBatchJson("system", "user")).rejects.toThrow(
+      'LLM provider "unknown" is not registered',
     );
-    expect(global.fetch).toHaveBeenNthCalledWith(
-      2,
-      "https://api.openai.com/v1/chat/completions",
-      expect.objectContaining({
-        body: expect.stringContaining('"model":"gpt-5-mini"'),
-        headers: expect.objectContaining({
-          Authorization: "Bearer openai-test-key",
-        }),
-      }),
-    );
-    const request = vi.mocked(global.fetch).mock.calls[1]?.[1] as RequestInit;
-    const body = JSON.parse(String(request.body));
-    expect(body.max_completion_tokens).toBe(8192);
-    expect(body).not.toHaveProperty("max_tokens");
   });
 
   it("aborts stalled research requests before the stage-level timeout", async () => {
@@ -156,43 +147,31 @@ describe("generateResearchJson", () => {
     const { generateResearchJson } = await import("./llm.ts");
     const pending = generateResearchJson("system", "user");
     const assertion = expect(pending).rejects.toThrow(
-      "Anthropic API request timed out after 120000ms",
+      "OpenAI API request timed out after 120000ms",
     );
 
     await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
-
     await assertion;
   });
 
-  it("selects explicit OpenAI exploration model override", async () => {
-    delete process.env.ANTHROPIC_API_KEY;
-    process.env.OPENAI_API_KEY = "test";
-    process.env.OPENAI_EXPLORATION_MODEL = "gpt-5.5";
-    const { getExplorationModel } = await import("./llm.ts");
-    expect(getExplorationModel()).toBe("gpt-5.5");
-  });
-
-  it("selects explicit Anthropic exploration model override", async () => {
-    process.env.ANTHROPIC_API_KEY = "test";
-    process.env.ANTHROPIC_EXPLORATION_MODEL = "claude-opus-4-5";
-    const { getExplorationModel } = await import("./llm.ts");
-    expect(getExplorationModel()).toBe("claude-opus-4-5");
-  });
-
-  it("generates exploration JSON with exploration model and research token budget", async () => {
+  it("uses the exploration model and research token budget", async () => {
     vi.useRealTimers();
     global.fetch = vi.fn(async () =>
       new Response(
-        JSON.stringify({ content: [{ text: JSON.stringify({ ok: true }) }] }),
+        JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({ ok: true }) } }],
+        }),
         { status: 200 },
       ),
     ) as typeof fetch;
     const { generateExplorationJson } = await import("./llm.ts");
-    await expect(generateExplorationJson("system", "user")).resolves.toEqual({ ok: true });
+
+    await expect(generateExplorationJson("system", "user")).resolves.toEqual({
+      ok: true,
+    });
     const request = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(request.body));
-    expect(body.model).toBe("claude-opus-4-5");
-    expect(body.max_tokens).toBe(8192);
+    expect(body.model).toBe("gpt-5.5");
+    expect(body.max_completion_tokens).toBe(8192);
   });
-
 });
