@@ -60,6 +60,7 @@ describe("provider-neutral LLM routing", () => {
     const request = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(request.body));
     expect(body.max_completion_tokens).toBe(8192);
+    expect(body.response_format).toEqual({ type: "json_object" });
     expect(body).not.toHaveProperty("max_tokens");
   });
 
