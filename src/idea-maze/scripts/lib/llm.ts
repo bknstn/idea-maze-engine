@@ -81,6 +81,7 @@ const openAiProvider: LlmProviderAdapter = {
           { role: "user", content: request.userPrompt },
         ],
         max_completion_tokens: request.maxTokens,
+        response_format: { type: "json_object" },
       }),
       signal: request.signal,
     });
