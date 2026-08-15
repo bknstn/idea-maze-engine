@@ -78,7 +78,6 @@ describe('process-opportunities quality gate integration', () => {
         encoding: 'utf8',
         env: {
           ...process.env,
-          ANTHROPIC_API_KEY: '',
           IDEA_MAZE_HOME: home,
           OPENAI_API_KEY: '',
           TAVILY_API_KEY: '',
