@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildMultiSubredditPath,
+  buildRedditRssUrl,
   getRedditRetryDelayMs,
   parseRedditAtomEntryUrl,
   selectRedditHarvestShard,
@@ -42,6 +43,12 @@ describe('selectRedditHarvestShard', () => {
 describe('Reddit multi-feed helpers', () => {
   it('builds one multi-subreddit path from a selected shard', () => {
     expect(buildMultiSubredditPath(['smallbusiness', 'OuraRing', 'onebag'])).toBe('smallbusiness+OuraRing+onebag');
+  });
+
+  it('uses the working Reddit host for Atom feeds', () => {
+    expect(buildRedditRssUrl('smallbusiness+marketing')).toBe(
+      'https://www.reddit.com/r/smallbusiness+marketing/new/.rss',
+    );
   });
 
   it('extracts alternate Atom links regardless of attribute order', () => {

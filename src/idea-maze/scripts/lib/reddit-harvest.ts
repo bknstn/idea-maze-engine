@@ -66,6 +66,10 @@ export function buildMultiSubredditPath(subreddits: string[]): string {
   return subreddits.join('+');
 }
 
+export function buildRedditRssUrl(subredditPath: string): string {
+  return `https://www.reddit.com/r/${subredditPath}/new/.rss`;
+}
+
 export function parseRedditAtomEntryUrl(entryXml: string): string | null {
   const linkTags = entryXml.match(/<link\b[^>]*>/gi) ?? [];
   let fallback: string | null = null;
