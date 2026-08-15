@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('./llm.ts', () => ({
   generateResearchJson: mocks.generateResearchJson,
   getMissingLlmReason: () => 'LLM provider "openai" is not configured',
-  getResearchModel: () => 'gpt-5.1',
+  getResearchModel: () => 'gpt-5.6-terra',
   isLlmConfigured: () => true,
 }));
 

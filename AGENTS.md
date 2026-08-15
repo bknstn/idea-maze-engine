@@ -70,9 +70,9 @@ Provider-specific authentication, request formatting, response parsing, and erro
 |----------|---------|
 | `OPENAI_API_KEY` | Credential used by the active OpenAI adapter |
 | `IDEA_MAZE_LLM_PROVIDER` | Registered provider name; defaults to `openai` |
-| `IDEA_MAZE_EXTRACTION_MODEL` | Extraction model; defaults to `gpt-5-mini` |
-| `IDEA_MAZE_RESEARCH_MODEL` | Research model; defaults to `gpt-5.1` |
-| `IDEA_MAZE_EXPLORATION_MODEL` | Exploration model; defaults to `gpt-5.5` |
+| `IDEA_MAZE_EXTRACTION_MODEL` | Extraction model; defaults to `gpt-5.6-luna` |
+| `IDEA_MAZE_RESEARCH_MODEL` | Research model; defaults to `gpt-5.6-terra` |
+| `IDEA_MAZE_EXPLORATION_MODEL` | Exploration model; defaults to `gpt-5.6-sol` |
 | `TAVILY_API_KEY` | Optional web-search enrichment during research |
 | `IDEA_MAZE_HOME` | Data-directory root override; defaults to the project root |
 

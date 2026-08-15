@@ -28,9 +28,9 @@ export interface LlmProviderAdapter {
 }
 
 const DEFAULT_MODELS: Record<LlmTask, string> = {
-  extraction: "gpt-5-mini",
-  research: "gpt-5.1",
-  exploration: "gpt-5.5",
+  extraction: "gpt-5.6-luna",
+  research: "gpt-5.6-terra",
+  exploration: "gpt-5.6-sol",
 };
 
 const MODEL_ENV: Record<LlmTask, string> = {

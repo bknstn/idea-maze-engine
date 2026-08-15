@@ -50,9 +50,9 @@ without changing pipeline stages.
 ```bash
 OPENAI_API_KEY=...
 IDEA_MAZE_LLM_PROVIDER=openai
-IDEA_MAZE_EXTRACTION_MODEL=gpt-5-mini
-IDEA_MAZE_RESEARCH_MODEL=gpt-5.1
-IDEA_MAZE_EXPLORATION_MODEL=gpt-5.5
+IDEA_MAZE_EXTRACTION_MODEL=gpt-5.6-luna
+IDEA_MAZE_RESEARCH_MODEL=gpt-5.6-terra
+IDEA_MAZE_EXPLORATION_MODEL=gpt-5.6-sol
 ```
 
 The provider defaults to `openai`, and each model has the value shown above by

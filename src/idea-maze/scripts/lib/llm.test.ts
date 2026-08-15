@@ -46,12 +46,12 @@ describe("provider-neutral LLM routing", () => {
     });
     expect(isLlmConfigured()).toBe(true);
     expect(getConfiguredProvider()).toBe("openai");
-    expect(getExtractionModel()).toBe("gpt-5-mini");
-    expect(getResearchModel()).toBe("gpt-5.1");
+    expect(getExtractionModel()).toBe("gpt-5.6-luna");
+    expect(getResearchModel()).toBe("gpt-5.6-terra");
     expect(global.fetch).toHaveBeenCalledWith(
       "https://api.openai.com/v1/chat/completions",
       expect.objectContaining({
-        body: expect.stringContaining('"model":"gpt-5-mini"'),
+        body: expect.stringContaining('"model":"gpt-5.6-luna"'),
         headers: expect.objectContaining({
           Authorization: "Bearer openai-test-key",
         }),
@@ -110,7 +110,7 @@ describe("provider-neutral LLM routing", () => {
 
     expect(getConfiguredProvider()).toBe("portable-test");
     await expect(generateBatchJson("system", "user")).resolves.toEqual({
-      model: "gpt-5-mini",
+      model: "gpt-5.6-luna",
       task: "extraction",
     });
     expect(generateJson).toHaveBeenCalledWith(
@@ -171,7 +171,7 @@ describe("provider-neutral LLM routing", () => {
     });
     const request = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(request.body));
-    expect(body.model).toBe("gpt-5.5");
+    expect(body.model).toBe("gpt-5.6-sol");
     expect(body.max_completion_tokens).toBe(8192);
   });
 });

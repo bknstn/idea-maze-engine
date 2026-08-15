@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('./llm.ts', () => ({
   generateExplorationJson: mocks.generateExplorationJson,
-  getExplorationModel: () => 'gpt-5.5',
+  getExplorationModel: () => 'gpt-5.6-sol',
   getMissingLlmReason: () => 'LLM provider "openai" is not configured',
   isLlmConfigured: () => true,
 }));
@@ -158,7 +158,7 @@ describe('exploration orchestration', () => {
       db,
       brief: { thesis: 'too thin' },
       logger: quietLogger(),
-      providerMetadata: { orchestrator: 'hermes', model: 'gpt-5.5', provider: 'openai-codex' },
+      providerMetadata: { orchestrator: 'hermes', model: 'gpt-5.6-sol', provider: 'openai-codex' },
     });
     expect(result.status).toBe('needs_manual_exploration');
     const run = db.prepare('SELECT status, metadata_json FROM runs WHERE id=?').get(result.runId) as any;
