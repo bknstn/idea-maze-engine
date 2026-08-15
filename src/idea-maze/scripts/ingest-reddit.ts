@@ -21,6 +21,7 @@ import { scoreSourceItem } from "./lib/scoring.ts";
 import { upsertSourceItem, getAppState, setAppStates } from "./lib/queries.ts";
 import {
   buildMultiSubredditPath,
+  buildRedditRssUrl,
   getRedditRetryDelayMs,
   parseRedditAtomEntryUrl,
   selectRedditHarvestShard,
@@ -254,7 +255,7 @@ async function fetchSubredditRss(
   maxPosts: number,
   retryRateLimit = true,
 ): Promise<PostResult[]> {
-  const url = `https://old.reddit.com/r/${subreddit}/new/.rss`;
+  const url = buildRedditRssUrl(subreddit);
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT, Accept: "application/atom+xml" },
   });
