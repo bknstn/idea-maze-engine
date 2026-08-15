@@ -14,7 +14,9 @@ npm run idea:run -- --json
 npm run idea:latest -- --json
 npm run idea:explain -- --id <slug> --json
 npm run idea:research -- <slug>
+npm run idea:explore -- --id <slug> --json
 npm run idea:artifacts -- --json
+npm run idea:explorations -- --json
 ```
 
 Additional stage commands:
