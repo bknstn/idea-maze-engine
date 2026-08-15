@@ -41,6 +41,24 @@ data/artifacts/
 These files are intentionally ignored by git. Set `IDEA_MAZE_HOME` to store
 runtime state somewhere else.
 
+## LLM configuration
+
+Idea Maze routes LLM work by task rather than by vendor. OpenAI is the active
+adapter; the provider boundary can support other request/response formats
+without changing pipeline stages.
+
+```bash
+OPENAI_API_KEY=...
+IDEA_MAZE_LLM_PROVIDER=openai
+IDEA_MAZE_EXTRACTION_MODEL=gpt-5.6-luna
+IDEA_MAZE_RESEARCH_MODEL=gpt-5.6-terra
+IDEA_MAZE_EXPLORATION_MODEL=gpt-5.6-sol
+```
+
+The provider defaults to `openai`, and each model has the value shown above by
+default. New vendors implement `LlmProviderAdapter` and register through
+`registerLlmProvider`; the pipeline does not perform implicit vendor fallback.
+
 ## Development
 
 ```bash

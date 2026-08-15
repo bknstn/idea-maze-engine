@@ -76,7 +76,7 @@ describe('artifact publication flow', () => {
     ).run(
       JSON.stringify({
         prompt_metadata: {
-          model: 'claude-sonnet-4-6',
+          model: 'gpt-5.6-terra',
           validation_status: 'valid',
         },
         draft: {
@@ -152,7 +152,7 @@ describe('artifact publication flow', () => {
     ).run(
       JSON.stringify({
         prompt_metadata: {
-          model: 'claude-sonnet-4-6',
+          model: 'gpt-5.6-terra',
           validation_status: 'valid',
         },
         draft: {
