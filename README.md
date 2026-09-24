@@ -28,7 +28,14 @@ npm run idea:ingest:telegram
 npm run idea:extract
 npm run idea:refresh
 npm run idea:process
+npm run idea:backfill-evidence-excerpts -- --help
 ```
+
+The evidence-excerpt backfill is opt-in and makes no LLM calls. It runs a
+100-row dry run by default; review the counts, then pass `--apply` to save exact
+matches found in legacy insight metadata. It only searches the first 1,500
+UTF-16 code units that the legacy batch extractor could see. Re-running skips
+rows already backfilled; use `--limit N` to process a bounded batch at a time.
 
 ## Data
 

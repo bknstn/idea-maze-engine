@@ -15,6 +15,8 @@ import { classifyFailure, withStageRunContext } from "./lib/run-events.ts";
 import { initSchema } from "./lib/schema.ts";
 import { getUnprocessedItems, type SourceItemRow } from "./lib/queries.ts";
 import { validateHarvestBatchResponse } from "./lib/validation.ts";
+import { sampleSourceText } from "./lib/evidence-excerpts.ts";
+import { groundEvidenceExcerpts } from "./lib/evidence-extraction.ts";
 
 // --- Types ---
 
@@ -138,19 +140,34 @@ async function llmBatchInsights(items: SourceItemRow[]): Promise<{
     const item = items[entry.index];
     if (!item) continue;
     const harvestScore = harvestScoreFromMeta(item.metadata_json);
-    out.set(entry.index, (entry.insights ?? []).map((gen) => ({
-      source_item_id: item.id,
-      insight_type: gen.insight_type as InsightType,
-      summary: gen.summary,
-      evidence_score: Math.min(1.0, Math.round((gen.evidence_score + harvestScore * 0.15) * 100) / 100),
-      confidence: gen.confidence,
-      metadata_json: {
-        strategy: "llm",
-        flow: "harvest",
-        source_harvest_score: harvestScore,
-        ...gen.metadata_json,
-      },
-    })));
+    const sample = sampleSourceText(item.text, 1500);
+    out.set(entry.index, (entry.insights ?? []).map((gen) => {
+      const grounded = groundEvidenceExcerpts(
+        item.id,
+        item.text,
+        gen.metadata_json.evidence_excerpts,
+        sample.windows,
+      );
+      return {
+        source_item_id: item.id,
+        insight_type: gen.insight_type as InsightType,
+        summary: gen.summary,
+        evidence_score: Math.min(1.0, Math.round((gen.evidence_score + harvestScore * 0.15) * 100) / 100),
+        confidence: gen.confidence,
+        metadata_json: {
+          ...gen.metadata_json,
+          strategy: "llm",
+          flow: "harvest",
+          source_harvest_score: harvestScore,
+          evidence_excerpt_version: 1,
+          evidence_excerpt_coverage: sample.complete ? "complete" : "sampled",
+          evidence_excerpt_status: grounded.excerpts.length ? "verified" : "no_grounded_evidence",
+          evidence_excerpt_candidate_count: grounded.candidateCount,
+          evidence_excerpt_rejected_count: grounded.rejectedCount,
+          evidence_excerpts: grounded.excerpts,
+        },
+      };
+    }));
   }
   return {
     errors: validated.errors,

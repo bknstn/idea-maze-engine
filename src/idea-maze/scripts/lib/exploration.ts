@@ -18,6 +18,7 @@ import {
 } from './prompts.ts';
 import { classifyFailure, createRun, recordRunEvent, updateRunStatus } from './run-events.ts';
 import { initSchema } from './schema.ts';
+import { formatSourceEvidence, loadOpportunitySourceEvidence } from './source-evidence.ts';
 import {
   type ValidatedExplorationBrief,
   validateExplorationBrief,
@@ -150,23 +151,12 @@ function latestApprovedDraft(db: Database.Database, opportunityId: number): stri
   return typeof draft === 'string' ? draft : JSON.stringify(draft, null, 2);
 }
 
-function truncate(value: string, limit = 500): string {
-  return value.length > limit ? `${value.slice(0, limit - 1)}…` : value;
-}
-
 function loadEvidence(db: Database.Database, opportunityId: number): { directEvidence: string[]; contextualResearch: string[] } {
-  const rows = db.prepare(`
-    SELECT si.*
-    FROM source_items si
-    JOIN opportunity_sources os ON os.source_item_id = si.id
-    WHERE os.opportunity_id = ?
-    ORDER BY json_extract(si.metadata_json, '$.harvest_score') DESC, si.timestamp_utc DESC
-    LIMIT 30
-  `).all(opportunityId) as Array<{ id: number; source: string; channel_or_label: string | null; title: string | null; text: string }>;
+  const rows = loadOpportunitySourceEvidence(db, opportunityId, 30);
   const directEvidence: string[] = [];
   const contextualResearch: string[] = [];
   for (const row of rows) {
-    const formatted = `${row.source}:${row.id}${row.title ? ` ${row.title}` : ''} — ${truncate(row.text)}`;
+    const formatted = formatSourceEvidence(row, 500);
     if (row.source === 'search' || row.channel_or_label === 'tavily') contextualResearch.push(formatted);
     else directEvidence.push(formatted);
   }

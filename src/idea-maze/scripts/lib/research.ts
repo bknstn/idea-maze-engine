@@ -23,6 +23,10 @@ import {
 } from './search.ts';
 import { type ResearchDraft } from './review.ts';
 import {
+  formatSourceEvidence,
+  loadOpportunitySourceEvidence,
+} from './source-evidence.ts';
+import {
   type ValidatedResearchDraft,
   validateResearchDraft,
 } from './validation.ts';
@@ -67,15 +71,15 @@ async function buildLlmDraft(
   const inbox = sourceItems
     .filter((s) => s.source === 'gmail')
     .slice(0, 5)
-    .map((s: any) => `${s.id}: ${s.text.slice(0, 220)}`);
+    .map((s: any) => formatSourceEvidence(s, 600));
   const telegram = sourceItems
     .filter((s) => s.source === 'telegram')
     .slice(0, 5)
-    .map((s: any) => `${s.id}: ${s.text.slice(0, 220)}`);
+    .map((s: any) => formatSourceEvidence(s, 600));
   const reddit = sourceItems
     .filter((s) => s.source === 'reddit')
     .slice(0, 5)
-    .map((s: any) => `${s.id}: ${s.text.slice(0, 220)}`);
+    .map((s: any) => formatSourceEvidence(s, 600));
   const external = searchItems
     .slice(0, 5)
     .map((s) => s.title || s.text.slice(0, 180));
@@ -102,15 +106,15 @@ function buildTemplateDraft(
   const inbox = sourceItems
     .filter((s) => s.source === 'gmail')
     .slice(0, 5)
-    .map((s: any) => s.text.slice(0, 220));
+    .map((s: any) => formatSourceEvidence(s, 600));
   const telegram = sourceItems
     .filter((s) => s.source === 'telegram')
     .slice(0, 5)
-    .map((s: any) => s.text.slice(0, 220));
+    .map((s: any) => formatSourceEvidence(s, 600));
   const reddit = sourceItems
     .filter((s) => s.source === 'reddit')
     .slice(0, 5)
-    .map((s: any) => s.text.slice(0, 220));
+    .map((s: any) => formatSourceEvidence(s, 600));
   const external = searchItems
     .slice(0, 5)
     .map((s) => s.title || s.text.slice(0, 180));
@@ -320,16 +324,7 @@ export async function researchOpportunity(
       summary: `Research started for ${opp.slug}.`,
     });
 
-    const sourceItems = db
-      .prepare(
-        `
-      SELECT si.* FROM source_items si
-      JOIN opportunity_sources os ON os.source_item_id = si.id
-      WHERE os.opportunity_id = ?
-      ORDER BY json_extract(si.metadata_json, '$.harvest_score') DESC, si.timestamp_utc DESC
-    `,
-      )
-      .all(opp.id) as any[];
+    const sourceItems = loadOpportunitySourceEvidence(db, Number(opp.id));
     logger.log(`Found ${sourceItems.length} linked source items.`);
 
     let searchItems: SearchEvidenceItem[] = [];
@@ -485,6 +480,14 @@ export async function researchOpportunity(
       draft,
       prompt_metadata: promptMetadata,
       research_trace: {
+        evidence_excerpt_counts: {
+          complete_sources: sourceItems.filter((source) => source.evidence_excerpt_coverage === 'complete').length,
+          sampled_sources: sourceItems.filter((source) => source.evidence_excerpt_coverage === 'sampled').length,
+          stale_sources: sourceItems.filter((source) => source.evidence_excerpt_status === 'stale').length,
+          legacy_sources: sourceItems.filter((source) => source.evidence_excerpt_status === 'legacy').length,
+          no_grounded_evidence_sources: sourceItems.filter((source) => source.evidence_excerpt_status === 'no_grounded_evidence').length,
+          verified_excerpts: sourceItems.reduce((count, source) => count + source.evidence_excerpts.length, 0),
+        },
         source_item_count: sourceItems.length,
         external_search: searchTrace,
       },

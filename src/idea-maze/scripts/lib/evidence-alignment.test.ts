@@ -110,6 +110,49 @@ describe('evaluateEvidenceAlignment', () => {
     expect(result.disposition).toBe('needs_more_evidence');
     expect(result.reasons).toContain('invalid_alignment_quotes');
   });
+  it('does not let an ASCII-only normalization turn a Cyrillic fabrication into an empty-string match', () => {
+    const source: EvidenceSourceSummary[] = [
+      { id: 20, source: 'reddit', title: null, text: 'Команда вручную сверяет счета каждый день.', canonical_url: null, channel_or_label: null },
+    ];
+    const result = evaluateEvidenceAlignment(source, [card({
+      source_id: 20,
+      relation: 'supports',
+      buyer_present: true,
+      pain_quote: 'пользователи готовы платить',
+      reason: 'fabricated quote',
+    })]);
+    expect(result.cards[0].grounded).toBe(false);
+    expect(result.cards[0].invalid_quotes).toContain('pain_quote');
+    expect(result.alignedBuyerSourceCount).toBe(0);
+  });
+  it('keeps punctuation and numeric separators significant while grounding exact fragments', () => {
+    const source: EvidenceSourceSummary[] = [
+      { id: 21, source: 'reddit', title: null, text: 'We use C# every day; the price is 1.50 per user.', canonical_url: null, channel_or_label: null },
+    ];
+    const result = evaluateEvidenceAlignment(source, [card({
+      source_id: 21,
+      relation: 'supports',
+      buyer_present: true,
+      pain_quote: 'We use C++ every day; the price is 1,50 per user.',
+      reason: 'near match',
+    })]);
+    expect(result.cards[0].grounded).toBe(false);
+    expect(result.cards[0].invalid_quotes).toContain('pain_quote');
+  });
+  it('returns recovered original text instead of the model display transformation', () => {
+    const source: EvidenceSourceSummary[] = [
+      { id: 22, source: 'reddit', title: null, text: 'I use &amp; pay €5 monthly.', canonical_url: null, channel_or_label: null },
+    ];
+    const result = evaluateEvidenceAlignment(source, [card({
+      source_id: 22,
+      relation: 'supports',
+      buyer_present: true,
+      pain_quote: 'I use & pay €5 monthly.',
+      reason: 'entity-decoded quote',
+    })]);
+    expect(result.cards[0].pain_quote).toBe('I use &amp; pay €5 monthly.');
+    expect(result.cards[0].evidence_excerpts[0].quote).toBe('I use &amp; pay €5 monthly.');
+  });
   it('fails conservatively when alignment is unavailable', () => {
     const result = evaluateEvidenceAlignment(sources, null);
     expect(result.disposition).toBe('needs_more_evidence');
