@@ -3,12 +3,14 @@
  * Ported from idea-maze-lab flows/harvest.md and flows/research.md.
  */
 
+import { sampleSourceText } from './evidence-excerpts.ts';
+
 export const HARVEST_PROMPT_NAME = 'idea-maze-harvest';
-export const HARVEST_PROMPT_VERSION = '2026-04-20.1';
+export const HARVEST_PROMPT_VERSION = '2026-09-24.1';
 export const RESEARCH_PROMPT_NAME = 'idea-maze-research';
-export const RESEARCH_PROMPT_VERSION = '2026-04-20.1';
+export const RESEARCH_PROMPT_VERSION = '2026-09-24.1';
 export const EVIDENCE_ALIGNMENT_PROMPT_NAME = 'idea-maze-evidence-alignment';
-export const EVIDENCE_ALIGNMENT_PROMPT_VERSION = '2026-07-18.1';
+export const EVIDENCE_ALIGNMENT_PROMPT_VERSION = '2026-09-24.1';
 
 export const EVIDENCE_ALIGNMENT_SYSTEM_PROMPT = `You are a conservative evidence auditor. Classify whether each primary source supports the exact opportunity thesis. Never infer pain or a buyer. Quotes must be copied verbatim from the source. Promotional founder claims are promo, not buyer evidence. Search results are context only. A source that says the current output/workaround is sufficient contradicts a thesis claiming it is inadequate.`;
 
@@ -17,8 +19,11 @@ export function buildEvidenceAlignmentUserPrompt(input: {
   thesis: string;
   sources: Array<{ id: number; source: string; title: string | null; text: string }>;
 }): string {
-  const sources = input.sources.map((source) => `SOURCE ${source.id} [${source.source}]\nTitle: ${source.title ?? 'None'}\n${source.text.slice(0, 3000)}`).join('\n\n');
-  return `Title: ${input.title}\nThesis: ${input.thesis}\n\n${sources}\n\nReturn JSON {"cards":[...]} with exactly one card per source. Each card must contain: source_id, relation (supports|contradicts|context|irrelevant|promo), buyer_present (boolean), pain_quote, wtp_quote, time_loss_quote, workaround_quote (exact source substrings or null), contradiction_resolved (boolean), and a short reason. A support requires an identifiable buyer and an exact pain quote.`;
+  const sources = input.sources.map((source) => {
+    const sample = sampleSourceText(source.text, 3000);
+    return `SOURCE ${source.id} [${source.source}]\nTitle: ${source.title ?? 'None'}\nSource text (quotes must come from this body, not the title):\n${sample.formatted}`;
+  }).join('\n\n');
+  return `Title: ${input.title}\nThesis: ${input.thesis}\n\n${sources}\n\nReturn JSON {"cards":[...]} with exactly one card per source. Each card must contain: source_id, relation (supports|contradicts|context|irrelevant|promo), buyer_present (boolean), pain_quote, wtp_quote, time_loss_quote, workaround_quote (exact quote text copied from a shown source-text window, or null), contradiction_resolved (boolean), and a short reason. A support requires an identifiable buyer and an exact pain quote. Partial samples are explicitly labeled; do not infer or invent a quote from omitted text.`;
 }
 
 export const HARVEST_SYSTEM_PROMPT = `You are an analyst extracting product opportunity signals from raw source content.
@@ -74,7 +79,7 @@ Title: ${item.title || 'None'}
 Harvest Score: ${item.harvest_score}
 
 Content:
-${item.text.slice(0, 4000)}
+${sampleSourceText(item.text, 4000).formatted}
 
 Return JSON with this exact structure:
 {
@@ -92,13 +97,16 @@ Return JSON with this exact structure:
         "adjacent_pains": "...",
         "workflow_stage": "...",
         "evidence_strength": "...",
-        "why_now": "..."
+        "why_now": "...",
+        "evidence_excerpts": [
+          { "role": "pain" | "workaround" | "wtp" | "time_loss", "quote": "Exact quote copied from a shown source-text window" }
+        ]
       }
     }
   ]
 }
 
-Return 1-3 insights. Only include high-confidence signals. Return an empty insights array if nothing meaningful can be extracted.`;
+Return 1-3 insights. Only include high-confidence signals. Every evidence excerpt must be an exact quote from a shown source-text window, not the title or omitted text. Return an empty excerpts array when no verifiable quote is available. Return an empty insights array if nothing meaningful can be extracted.`;
 }
 
 export function buildBatchHarvestUserPrompt(
@@ -120,7 +128,7 @@ Channel/Label: ${item.channel_or_label ?? 'None'}
 Title: ${item.title || 'None'}
 Harvest Score: ${item.harvest_score}
 Content:
-${item.text.slice(0, 1500)}`,
+${sampleSourceText(item.text, 1500).formatted}`,
     )
     .join('\n');
 
@@ -147,7 +155,10 @@ Return JSON with this exact structure:
             "adjacent_pains": "...",
             "workflow_stage": "...",
             "evidence_strength": "...",
-            "why_now": "..."
+            "why_now": "...",
+            "evidence_excerpts": [
+              { "role": "pain" | "workaround" | "wtp" | "time_loss", "quote": "Exact quote copied from a shown source-text window" }
+            ]
           }
         }
       ]
@@ -155,13 +166,15 @@ Return JSON with this exact structure:
   ]
 }
 
-Include an entry for every item index. Return empty insights array for items with no meaningful signal. Return 0-3 insights per item.`;
+Include an entry for every item index. Return 0-4 exact evidence excerpts per insight. Excerpts must be copied from a shown source-text window, not from the title or omitted text; use an empty array when no verifiable quote is available. Return empty insights array for items with no meaningful signal. Return 0-3 insights per item.`;
 }
 
 export const RESEARCH_SYSTEM_PROMPT = `You are a product researcher turning a shortlisted opportunity into an automated research artifact.
 
 ## Core Principles
 - Verify the pain before expanding the idea.
+- Treat only lines explicitly labeled "Verified ... excerpt" as grounded direct quotes. Treat unverified context as context, never as a quote or proof of pain.
+- Preserve verified quote text exactly when citing it; an excerpt omitted by the prompt budget is unavailable evidence.
 - Follow connected pains until the solution becomes a workflow.
 - Repetition matters more than novelty.
 - The best businesses come from owning the chain of friction, not one isolated feature.
@@ -237,7 +250,7 @@ Return JSON with this exact structure:
 
 
 export const EXPLORATION_PROMPT_NAME = 'idea-maze-exploration';
-export const EXPLORATION_PROMPT_VERSION = '2026-06-21.1';
+export const EXPLORATION_PROMPT_VERSION = '2026-09-24.1';
 
 export const EXPLORATION_SYSTEM_PROMPT = `You are a founder-track product researcher creating a deep exploration brief for an already approved opportunity.
 
@@ -245,6 +258,8 @@ Rules:
 - Approved means worth exploring, not worth building yet.
 - Sharpen buyer, trigger, current workaround, WTP, distribution, and kill criteria.
 - Use direct buyer/source evidence for pain. Do not count web search as independent buyer-pain evidence.
+- Treat only lines explicitly labeled "Verified ... excerpt" as grounded direct quotes. Treat unverified context as context, never as a quote or proof of pain.
+- Preserve verified quote text exactly when citing it; an excerpt omitted by the prompt budget is unavailable evidence.
 - Web search is only competitor/context research.
 - Prefer narrow self-serve wedges a solo founder can test quickly.
 - Be explicit when evidence is thin.`;

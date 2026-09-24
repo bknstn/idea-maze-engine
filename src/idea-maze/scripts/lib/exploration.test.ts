@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createEvidenceExcerpt } from './evidence-excerpts.ts';
 import type { ValidatedExplorationBrief } from './validation.ts';
 
 const mocks = vi.hoisted(() => ({
@@ -63,6 +64,39 @@ async function insertOpportunity(db: any, overrides: Record<string, unknown> = {
     INSERT INTO opportunities (slug,title,thesis,score,market_score,taste_adjustment,final_score,status,lifecycle_stage,cluster_key,metadata_json,created_at_utc,updated_at_utc)
     VALUES (@slug,@title,@thesis,@score,@market_score,@taste_adjustment,@final_score,@status,@lifecycle_stage,@cluster_key,@metadata_json,@created_at_utc,@updated_at_utc)
   `).run(row);
+}
+
+function insertSourceEvidence(
+  db: any,
+  opportunitySlug: string,
+  input: { text: string; excerptText?: string; excerpts: Array<{ role: 'pain' | 'workaround' | 'wtp' | 'time_loss'; quote: string }> },
+): number {
+  const now = '2026-09-24T00:00:00.000Z';
+  const sourceItemId = Number(db.prepare(`
+    INSERT INTO source_items (source,external_id,title,text,canonical_url,channel_or_label,timestamp_utc,ingested_at_utc,raw_path,content_hash,metadata_json)
+    VALUES ('reddit',?,'Evidence post',?,'https://reddit.example/post/1','founders',?,?, '/tmp/source.json','ingest-hash','{}')
+  `).run(`post-${input.text.length}-${input.excerpts.length}`, input.text, now, now).lastInsertRowid);
+  db.prepare(`
+    INSERT INTO opportunity_sources (opportunity_id,source_item_id)
+    SELECT id, ? FROM opportunities WHERE slug = ?
+  `).run(sourceItemId, opportunitySlug);
+  const excerpts = input.excerpts.map(({ role, quote }) => createEvidenceExcerpt({
+    sourceItemId,
+    role,
+    sourceText: input.excerptText ?? input.text,
+    candidate: quote,
+  })!);
+  db.prepare(`
+    INSERT INTO insights (source_item_id,insight_type,summary,evidence_score,confidence,status,metadata_json,created_at_utc)
+    VALUES (?,'pain_point','Direct evidence',0.9,0.9,'new',?,?)
+  `).run(sourceItemId, JSON.stringify({
+    evidence_excerpt_version: 1,
+    evidence_excerpt_coverage: 'complete',
+    evidence_excerpt_candidate_count: excerpts.length,
+    evidence_excerpt_rejected_count: 0,
+    evidence_excerpts: excerpts,
+  }), now);
+  return sourceItemId;
 }
 
 describe('exploration rendering', () => {
@@ -126,6 +160,43 @@ describe('exploration orchestration', () => {
     const result = await prepareExploration('voice-looking', { db, logger: quietLogger() });
     expect(result.status).toBe('awaiting_external_brief');
     expect(result.prompt).toContain('voice-looking');
+  });
+
+  it('puts tail excerpts in the exploration packet and never labels stale excerpts verified', async () => {
+    const { getDb } = await import('./db.ts');
+    const { initSchema } = await import('./schema.ts');
+    const { prepareExploration } = await import('./exploration.ts');
+    const db = getDb();
+    initSchema(db);
+    await insertOpportunity(db);
+
+    const pain = 'At the end of the post, I lose two hours every Friday.';
+    const workaround = 'At the end, I copy every invoice into a spreadsheet.';
+    const wtp = 'At the end, I would pay for a reliable fix.';
+    const timeLoss = 'At the end, this costs our team three hours.';
+    const tail = `${pain} ${workaround} ${wtp} ${timeLoss}`;
+    insertSourceEvidence(db, 'voice-looking', {
+      text: `Beginning of a long post. ${'Unrelated background paragraph. '.repeat(250)}${tail}`,
+      excerpts: [
+        { role: 'pain', quote: pain },
+        { role: 'workaround', quote: workaround },
+        { role: 'wtp', quote: wtp },
+        { role: 'time_loss', quote: timeLoss },
+      ],
+    });
+    insertSourceEvidence(db, 'voice-looking', {
+      text: 'The edited source has no old sentence anymore.',
+      excerptText: 'Old source said: VERIFIED_STALE_SNIPPET should not survive.',
+      excerpts: [{ role: 'pain', quote: 'VERIFIED_STALE_SNIPPET' }],
+    });
+
+    const result = await prepareExploration('voice-looking', { db, logger: quietLogger() });
+    expect(result.prompt).toContain(`⟦${pain}⟧`);
+    expect(result.prompt).toContain(`⟦${workaround}⟧`);
+    expect(result.prompt).toContain(`⟦${wtp}⟧`);
+    expect(result.prompt).toContain(`⟦${timeLoss}⟧`);
+    expect(result.prompt).toContain('Stored excerpt failed source-text revalidation');
+    expect(result.prompt).not.toContain('⟦VERIFIED_STALE_SNIPPET⟧');
   });
 
   it('persists default engine exploration briefs without changing approval state', async () => {

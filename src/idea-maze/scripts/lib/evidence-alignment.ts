@@ -1,6 +1,11 @@
 import { generateEvidenceAlignmentJson } from './llm.ts';
 import { buildEvidenceAlignmentUserPrompt, EVIDENCE_ALIGNMENT_SYSTEM_PROMPT } from './prompts.ts';
 import {
+  createEvidenceExcerpt,
+  type EvidenceExcerptV1,
+  type EvidenceExcerptRole,
+} from './evidence-excerpts.ts';
+import {
   isPromotionalEvidenceSource,
   normalizeEvidenceText,
   type EvidenceGateDisposition,
@@ -22,6 +27,7 @@ export interface EvidenceAlignmentCard {
 export interface ValidatedEvidenceAlignmentCard extends EvidenceAlignmentCard {
   grounded: boolean;
   invalid_quotes: string[];
+  evidence_excerpts: EvidenceExcerptV1[];
 }
 export interface EvidenceAlignmentResult {
   adjustedMaxScore: number;
@@ -36,6 +42,12 @@ export interface EvidenceAlignmentResult {
 
 const RELATIONS = new Set<EvidenceRelation>(['supports', 'contradicts', 'context', 'irrelevant', 'promo']);
 const QUOTE_FIELDS = ['pain_quote', 'wtp_quote', 'time_loss_quote', 'workaround_quote'] as const;
+const QUOTE_ROLES: Record<(typeof QUOTE_FIELDS)[number], EvidenceExcerptRole> = {
+  pain_quote: 'pain',
+  wtp_quote: 'wtp',
+  time_loss_quote: 'time_loss',
+  workaround_quote: 'workaround',
+};
 
 function isPrimaryBuyerSource(source: EvidenceSourceSummary | undefined): boolean {
   if (!source) return false;
@@ -63,10 +75,22 @@ export function evaluateEvidenceAlignment(sources: EvidenceSourceSummary[], card
       continue;
     }
     seen.add(Number(raw.source_id));
-    const haystack = normalizeEvidenceText(`${source.title ?? ''} ${source.text}`);
+    const evidenceExcerpts: EvidenceExcerptV1[] = [];
+    const recoveredQuotes: Partial<Record<(typeof QUOTE_FIELDS)[number], string>> = {};
     const invalidQuotes = QUOTE_FIELDS.filter((field) => {
       const quote = raw[field];
-      return quote !== null && (typeof quote !== 'string' || !quote.trim() || !haystack.includes(normalizeEvidenceText(quote)));
+      if (quote === null) return false;
+      if (typeof quote !== 'string') return true;
+      const excerpt = createEvidenceExcerpt({
+        sourceItemId: source.id,
+        role: QUOTE_ROLES[field],
+        sourceText: source.text,
+        candidate: quote,
+      });
+      if (!excerpt) return true;
+      evidenceExcerpts.push(excerpt);
+      recoveredQuotes[field] = excerpt.quote;
+      return false;
     });
     if (invalidQuotes.length) invalid = true;
     const painGrounded = typeof raw.pain_quote === 'string' && raw.pain_quote.trim().length > 0 && !invalidQuotes.includes('pain_quote');
@@ -77,7 +101,16 @@ export function evaluateEvidenceAlignment(sources: EvidenceSourceSummary[], card
     const grounded = invalidQuotes.length === 0 && (
       raw.relation === 'supports' ? painGrounded : anyQuoteGrounded
     );
-    validated.push({ ...raw, grounded, invalid_quotes: invalidQuotes });
+    validated.push({
+      ...raw,
+      pain_quote: recoveredQuotes.pain_quote ?? null,
+      wtp_quote: recoveredQuotes.wtp_quote ?? null,
+      time_loss_quote: recoveredQuotes.time_loss_quote ?? null,
+      workaround_quote: recoveredQuotes.workaround_quote ?? null,
+      grounded,
+      invalid_quotes: invalidQuotes,
+      evidence_excerpts: evidenceExcerpts,
+    });
   }
   if (invalid) reasons.add('invalid_alignment_quotes');
   const supportHashes = new Set<string>();
