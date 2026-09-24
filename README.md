@@ -73,6 +73,7 @@ default. New vendors implement `LlmProviderAdapter` and register through
 ```bash
 npm install
 npm run idea:status -- --json
+npm run idea:eval:evidence-quotes
 npm test
 npm run typecheck
 ```

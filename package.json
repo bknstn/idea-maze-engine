@@ -18,6 +18,7 @@
     "idea:ingest:telegram": "tsx src/idea-maze/scripts/ingest-telegram.ts",
     "idea:extract": "tsx src/idea-maze/scripts/extract-insights.ts",
     "idea:backfill-evidence-excerpts": "tsx src/idea-maze/scripts/backfill-evidence-excerpts.ts",
+    "idea:eval:evidence-quotes": "node --import tsx src/idea-maze/scripts/evaluate-evidence-quotes.ts",
     "idea:refresh": "tsx src/idea-maze/scripts/refresh-opportunities.ts",
     "idea:process": "tsx src/idea-maze/scripts/process-opportunities.ts",
     "idea:latest": "tsx src/idea-maze/scripts/latest-opportunities.ts",
