@@ -33,6 +33,7 @@ export interface PipelineStatusSnapshot {
   active_opportunities: number;
   archived_opportunities: number;
   counts: ReturnType<typeof getCounts>;
+  reddit_harvest: RedditHarvestStatusSnapshot;
   latest_run: {
     completed_at_utc: string | null;
     error: string | null;
@@ -57,6 +58,121 @@ export interface PipelineStatusSnapshot {
     status: string;
     summary: string;
   }>;
+}
+
+export interface RedditHarvestStatusSnapshot {
+  configured_count: number;
+  last_success_at_utc: string | null;
+  latest_run: Record<string, any> | null;
+  subreddits: Array<{
+    subreddit: string;
+    current_run_status: string;
+    deferred_reason: string | null;
+    last_attempt_at_utc: string | null;
+    last_success_at_utc: string | null;
+    freshness_seconds: number | null;
+    cursor_timestamp_utc: string | null;
+    cursor_post_id: string | null;
+    coverage_state: string;
+    last_range_coverage_state: string;
+    coverage_gaps: Array<Record<string, any>>;
+    last_failure: Record<string, any> | null;
+    last_run: Record<string, any> | null;
+  }>;
+  coverage_gaps: Array<Record<string, any>>;
+  failures: Array<Record<string, any>>;
+  schedule_recommendation: Record<string, any> | null;
+}
+
+function appStateValue(db: Database.Database, key: string): any {
+  const row = db.prepare('SELECT value_json FROM app_state WHERE key = ?').get(key) as
+    | { value_json: string }
+    | undefined;
+  if (!row) return null;
+  try {
+    return JSON.parse(row.value_json);
+  } catch {
+    return null;
+  }
+}
+
+export function buildRedditHarvestStatusSnapshot(
+  db: Database.Database,
+  now = new Date(),
+): RedditHarvestStatusSnapshot {
+  const configured = appStateValue(db, 'reddit_subreddits');
+  const state = appStateValue(db, 'reddit_harvest_state');
+  const latestRun = appStateValue(db, 'reddit_harvest_status');
+  const persistedState = state !== null && typeof state === 'object' && !Array.isArray(state)
+    ? state as Record<string, Record<string, any>>
+    : {};
+  const configuredNames = Array.isArray(configured)
+    ? configured.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+  const namesByKey = new Map<string, string>();
+  for (const subreddit of configuredNames) namesByKey.set(subreddit.toLowerCase(), subreddit);
+  for (const subreddit of Object.keys(persistedState)) namesByKey.set(subreddit.toLowerCase(), namesByKey.get(subreddit.toLowerCase()) ?? subreddit);
+  const runRows = Array.isArray(latestRun?.subreddits) ? latestRun.subreddits : [];
+  const runByName = new Map<string, Record<string, any>>();
+  for (const item of runRows) {
+    if (typeof item?.subreddit === 'string') runByName.set(item.subreddit.toLowerCase(), item);
+  }
+  const deferredRows = Array.isArray(latestRun?.deferred_subreddits) ? latestRun.deferred_subreddits : [];
+  const deferredByName = new Map<string, Record<string, any>>();
+  for (const item of deferredRows) {
+    if (typeof item?.subreddit === 'string') deferredByName.set(item.subreddit.toLowerCase(), item);
+  }
+  const subreddits = [...namesByKey.values()].map((subreddit) => {
+    const value = persistedState[subreddit]
+      ?? Object.entries(persistedState).find(([name]) => name.toLowerCase() === subreddit.toLowerCase())?.[1]
+      ?? {};
+    const lastSuccess = typeof value.last_success_at_utc === 'string' ? value.last_success_at_utc : null;
+    const lastSuccessMs = lastSuccess ? Date.parse(lastSuccess) : Number.NaN;
+    const gaps = Array.isArray(value.coverage_gaps) ? value.coverage_gaps : [];
+    const runResult = runByName.get(subreddit.toLowerCase());
+    const deferred = deferredByName.get(subreddit.toLowerCase());
+    return {
+      subreddit,
+      current_run_status: runResult?.status ?? (deferred ? 'deferred' : lastSuccess ? 'not_selected' : 'never_checked'),
+      deferred_reason: typeof deferred?.reason === 'string' ? deferred.reason : null,
+      last_attempt_at_utc: typeof value.last_attempt_at_utc === 'string' ? value.last_attempt_at_utc : null,
+      last_success_at_utc: lastSuccess,
+      freshness_seconds: Number.isFinite(lastSuccessMs)
+        ? Math.max(0, Math.floor((now.getTime() - lastSuccessMs) / 1_000))
+        : null,
+      cursor_timestamp_utc: typeof value.cursor_timestamp_utc === 'string' ? value.cursor_timestamp_utc : null,
+      cursor_post_id: typeof value.cursor_post_id === 'string' ? value.cursor_post_id : null,
+      coverage_state: typeof value.coverage_state === 'string' ? value.coverage_state : 'never_checked',
+      last_range_coverage_state: typeof value.last_range_coverage_state === 'string'
+        ? value.last_range_coverage_state
+        : typeof value.coverage_state === 'string' ? value.coverage_state : 'never_checked',
+      coverage_gaps: gaps,
+      last_failure: value.last_failure && typeof value.last_failure === 'object' ? value.last_failure : null,
+      last_run: value.last_run && typeof value.last_run === 'object' ? value.last_run : null,
+    };
+  }).sort((a, b) => a.subreddit.localeCompare(b.subreddit));
+  const coverageGaps = subreddits.flatMap((item) => item.coverage_gaps.map((gap) => ({
+    ...gap,
+    subreddit: item.subreddit,
+  }))).slice(-100);
+  const failures = subreddits
+    .filter((item) => item.last_failure)
+    .map((item) => ({ subreddit: item.subreddit, ...item.last_failure }));
+  const recommendation = latestRun?.schedule_recommendation
+    && typeof latestRun.schedule_recommendation === 'object'
+    ? latestRun.schedule_recommendation
+    : null;
+  return {
+    configured_count: namesByKey.size,
+    last_success_at_utc: typeof appStateValue(db, 'reddit_last_harvest') === 'string'
+      ? appStateValue(db, 'reddit_last_harvest')
+      : null,
+    latest_run: latestRun && typeof latestRun === 'object' ? latestRun : null,
+    subreddits,
+    coverage_gaps: coverageGaps,
+    failures,
+    schedule_recommendation: recommendation,
+  };
 }
 
 export interface LatestSnapshot {
@@ -134,6 +250,7 @@ export interface OpportunityExplanationSnapshot {
 
 export function buildPipelineStatusSnapshot(
   db: Database.Database,
+  now = new Date(),
 ): PipelineStatusSnapshot {
   const latestRun = db
     .prepare(
@@ -213,6 +330,7 @@ export function buildPipelineStatusSnapshot(
     active_opportunities: activeOpportunities,
     archived_opportunities: archivedOpportunities,
     counts,
+    reddit_harvest: buildRedditHarvestStatusSnapshot(db, now),
     latest_run: latestRun ?? null,
     recent_warnings: rawRecentWarnings.map((warning) => {
       const payload = parseJson(warning.payload_json);
@@ -254,6 +372,14 @@ export function buildPipelineStatusReport(db: Database.Database): string {
     latestRun?.error ? `Error: ${latestRun.error}` : 'Error: none',
     '',
     `Counts: ${snapshot.counts.source_items} sources, ${snapshot.counts.insights} insights, ${snapshot.counts.opportunities} opportunities, ${snapshot.active_opportunities} active, ${snapshot.archived_opportunities} archived, ${snapshot.counts.runs_pending} open research runs, ${snapshot.counts.artifacts} artifacts, ${snapshot.counts.exploration_artifacts} explorations`,
+    '',
+    'Reddit harvest:',
+    `- Configured: ${snapshot.reddit_harvest.configured_count}; successful subreddits: ${snapshot.reddit_harvest.subreddits.filter((item) => item.last_success_at_utc).length}`,
+    `- Last successful check: ${snapshot.reddit_harvest.last_success_at_utc ?? 'none recorded'}`,
+    `- Coverage gaps retained: ${snapshot.reddit_harvest.coverage_gaps.length}; latest failures: ${snapshot.reddit_harvest.failures.length}`,
+    snapshot.reddit_harvest.schedule_recommendation
+      ? `- Schedule: provisional every ${snapshot.reddit_harvest.schedule_recommendation.candidate_interval_hours}h; validate observed feed depth and 429 frequency before enabling.`
+      : '- Schedule: no recommendation recorded yet.',
     '',
     'Stages:',
   ];
