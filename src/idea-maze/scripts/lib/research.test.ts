@@ -36,7 +36,11 @@ describe('researchOpportunity', () => {
   beforeEach(() => {
     ideaMazeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'idea-maze-research-'));
     fs.mkdirSync(path.join(ideaMazeHome, 'data'), { recursive: true });
-    process.env.IDEA_MAZE_HOME = ideaMazeHome;
+    vi.stubEnv('IDEA_MAZE_HOME', ideaMazeHome);
+    vi.stubEnv('TAVILY_API_KEY', '');
+    vi.stubEnv('IDEA_MAZE_JEV_ENABLED', 'false');
+    vi.stubEnv('TYPESAFE_API_KEY', '');
+    vi.stubEnv('IDEA_MAZE_JEV_MODEL', '');
     vi.resetModules();
     mocks.generateResearchJson.mockReset();
   });
@@ -44,7 +48,8 @@ describe('researchOpportunity', () => {
   afterEach(async () => {
     const { closeDb } = await import('./db.ts');
     closeDb();
-    delete process.env.IDEA_MAZE_HOME;
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     fs.rmSync(ideaMazeHome, { recursive: true, force: true });
   });
 
@@ -187,6 +192,75 @@ describe('researchOpportunity', () => {
       prompt_metadata: { validation_status: string };
     };
     expect(metadata.prompt_metadata.validation_status).toBe('valid');
+  });
+
+  it('keeps original research and review-gate flow on Jev failure and zero scores', async () => {
+    mocks.generateResearchJson.mockResolvedValue(validResearchDraft);
+    vi.stubEnv('IDEA_MAZE_JEV_ENABLED', 'true');
+    vi.stubEnv('TYPESAFE_API_KEY', 'mock-key');
+    vi.stubEnv('IDEA_MAZE_JEV_MODEL', 'account-model-pin');
+    const responses = [
+      new Response(JSON.stringify({ error: 'private provider detail' }), { status: 529 }),
+      new Response(JSON.stringify({
+        model: 'returned-model',
+        answers: {
+          tailquote_grounding: { type: 'noul', noul: 0 },
+          workaround_signal: { type: 'noul', noul: 0 },
+          contradiction_signal: { type: 'noul', noul: 0 },
+        },
+        usage: { input_tokens: 20, output_tokens: 5 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    ];
+    const fetchMock = vi.fn<typeof fetch>(async () => responses.shift()!);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getDb } = await import('./db.ts');
+    const { initSchema } = await import('./schema.ts');
+    const { researchOpportunity } = await import('./research.ts');
+    const db = getDb();
+    initSchema(db);
+    const now = '2026-09-25T00:00:00.000Z';
+    const opportunityId = Number(db.prepare(`
+      INSERT INTO opportunities (slug,title,thesis,score,market_score,taste_adjustment,final_score,status,lifecycle_stage,cluster_key,metadata_json,created_at_utc,updated_at_utc)
+      VALUES ('jev-fail-open','Receipt reconciliation','Teams need help reconciling receipts.',8,8,0,8,'active','shortlisted','receipt-reconciliation','{}',?,?)
+    `).run(now, now).lastInsertRowid);
+    const quote = 'At the very end, I hate manually matching receipts every Friday.';
+    const sourceText = `Opening context. ${'Unrelated discussion. '.repeat(100)}${quote}`;
+    const sourceId = Number(db.prepare(`
+      INSERT INTO source_items (source,external_id,title,text,canonical_url,channel_or_label,timestamp_utc,ingested_at_utc,raw_path,content_hash,metadata_json)
+      VALUES ('reddit','jev-fail-source','Receipt thread',?,'https://reddit.example/thread/jevt','finance',?,?, '/tmp/jev-source.json','original-ingest-hash','{}')
+    `).run(sourceText, now, now).lastInsertRowid);
+    const excerpt = createEvidenceExcerpt({ sourceItemId: sourceId, role: 'pain', sourceText, candidate: quote })!;
+    db.prepare('INSERT INTO opportunity_sources (opportunity_id,source_item_id) VALUES (?,?)').run(opportunityId, sourceId);
+    db.prepare(`
+      INSERT INTO insights (source_item_id,insight_type,summary,evidence_score,confidence,status,metadata_json,created_at_utc)
+      VALUES (?,'pain_point','Direct evidence',0.9,0.9,'new',?,?)
+    `).run(sourceId, JSON.stringify({
+      evidence_excerpt_version: 1,
+      evidence_excerpt_coverage: 'complete',
+      evidence_excerpts: [excerpt],
+    }), now);
+
+    const logger = { log() {}, warn() {} };
+    const failureRun = await researchOpportunity('jev-fail-open', { db, logger, requestedBy: 'test' });
+    expect(failureRun.status).toBe('review_gate');
+    expect(String(mocks.generateResearchJson.mock.calls[0][1])).toContain(`⟦${quote}⟧`);
+    const failedMetadata = JSON.parse((db.prepare('SELECT metadata_json FROM runs WHERE id = ?').get(failureRun.runId) as { metadata_json: string }).metadata_json);
+    expect(failedMetadata.research_trace.jev_shadow.entries[0]).toMatchObject({
+      status: 'error',
+      reason: 'http_error',
+    });
+    expect(failedMetadata.research_trace.jev_shadow.entries[0].dimensions.every((dimension: { status: string; noul: number | null }) => dimension.status === 'unknown' && dimension.noul === null)).toBe(true);
+    expect(failedMetadata.research_trace.jev_shadow.applied_to_decision).toBe(false);
+    expect((db.prepare('SELECT text FROM source_items WHERE id = ?').get(sourceId) as { text: string }).text).toBe(sourceText);
+
+    const zeroScoreRun = await researchOpportunity('jev-fail-open', { db, logger, requestedBy: 'test' });
+    expect(zeroScoreRun.status).toBe('review_gate');
+    const zeroMetadata = JSON.parse((db.prepare('SELECT metadata_json FROM runs WHERE id = ?').get(zeroScoreRun.runId) as { metadata_json: string }).metadata_json);
+    expect(zeroMetadata.research_trace.jev_shadow.entries[0].dimensions.every((dimension: { noul: number | null }) => dimension.noul === 0)).toBe(true);
+    expect(zeroMetadata.research_trace.jev_shadow.applied_to_decision).toBe(false);
+    expect(zeroMetadata.draft.source_refs).toContain(sourceId);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('quarantines fallback template drafts away from the review gate without publishing', async () => {
