@@ -16,6 +16,7 @@ import {
 } from './prompts.ts';
 import { classifyFailure, createRun, recordRunEvent } from './run-events.ts';
 import { initSchema } from './schema.ts';
+import { assessResearchEvidenceWithJev } from './jev-shadow-research.ts';
 import {
   enrichOpportunityWithSearch,
   isSearchConfigured,
@@ -326,6 +327,23 @@ export async function researchOpportunity(
 
     const sourceItems = loadOpportunitySourceEvidence(db, Number(opp.id));
     logger.log(`Found ${sourceItems.length} linked source items.`);
+    const jevShadowTrace = await assessResearchEvidenceWithJev(
+      db,
+      { title: opp.title, thesis: opp.thesis, cluster_key: opp.cluster_key },
+      sourceItems,
+    );
+    recordRunEvent(db, {
+      actor: requestedBy,
+      eventType: 'research.jev_shadow',
+      opportunityId: Number(opp.id),
+      payload: jevShadowTrace,
+      runId,
+      stage: 'research',
+      status: jevShadowTrace.error_count > 0 ? 'warning' : 'info',
+      summary: jevShadowTrace.enabled
+        ? `Jev shadow assessment: ${jevShadowTrace.assessed_count} assessed, ${jevShadowTrace.cache_hits} cache hit(s), ${jevShadowTrace.error_count} error(s).`
+        : 'Jev shadow assessment disabled; original research flow unchanged.',
+    });
 
     let searchItems: SearchEvidenceItem[] = [];
     let searchAnswers: string[] = [];
@@ -490,6 +508,7 @@ export async function researchOpportunity(
         },
         source_item_count: sourceItems.length,
         external_search: searchTrace,
+        jev_shadow: jevShadowTrace,
       },
     };
 
