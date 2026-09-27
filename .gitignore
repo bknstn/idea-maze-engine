@@ -14,3 +14,6 @@ ipc/
 groups/idea-maze/data/
 
 .DS_Store
+
+# Private Hermes runtime plans/state (reviewed plans belong in docs/plans)
+.hermes/
