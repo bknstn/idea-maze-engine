@@ -5,10 +5,10 @@ source-version contract. It contains 40 synthetic cases: 24 fixed tuning cases
 and 16 held-out cases. Fixture version is `idea-maze-evidence-quotes-v1`, with
 SHA-256 `2c75a697993c0c071d9256e5e1e1214356fd66adca7b249cc4373a3fd5b588c5`.
 The comparator is the frozen quote-validation rule from base
-`675ef394c2a1157700be0930c2d05714ad4f1a32`; the candidate algorithm is
+`1921fdb648193a164b6ffb1e78b4e97788cf8b77`; the candidate algorithm is
 `evidence-excerpts-v1`. The CLI captures the actual Git revision and dirty-tree
 state on every run. This report was generated at revision
-`8fcd382afd56b3ae942340a33a411e986422a44b` with a dirty working tree because
+`52984a226d5efebaaf8e215987486e107e58ee3e` with a dirty working tree because
 the evaluation files were being added. No model was called, and the held-out
 split was not used for tuning.
 
@@ -21,11 +21,11 @@ excerpts also need the current source ID, hash, range, and exact substring.
 
 | Split | Method | Contract pass accuracy | Synthetic contract precision | False accepts | Missed valid quotes |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Tuning (24) | Base `675ef39` | 66.7% | 68.2% (15/22) | 7 | 1 |
+| Tuning (24) | Base `1921fdb` | 66.7% | 68.2% (15/22) | 7 | 1 |
 | Tuning (24) | T3 `evidence-excerpts-v1` | 100% | 100% (16/16) | 0 | 0 |
-| Holdout (16) | Base `675ef39` | 68.8% | 68.8% (11/16) | 5 | 0 |
+| Holdout (16) | Base `1921fdb` | 68.8% | 68.8% (11/16) | 5 | 0 |
 | Holdout (16) | T3 `evidence-excerpts-v1` | 100% | 100% (11/11) | 0 | 0 |
-| All (40) | Base `675ef39` | 67.5% | 68.4% (26/38) | 12 | 1 |
+| All (40) | Base `1921fdb` | 67.5% | 68.4% (26/38) | 12 | 1 |
 | All (40) | T3 `evidence-excerpts-v1` | 100% | 100% (27/27) | 0 | 0 |
 
 The 12 legacy contract false accepts split into six fabricated or punctuation

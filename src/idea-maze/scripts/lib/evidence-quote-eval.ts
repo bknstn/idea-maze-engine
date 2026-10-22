@@ -5,7 +5,7 @@ import { EVIDENCE_QUOTE_EVAL_FIXTURES, EVIDENCE_QUOTE_EVAL_VERSION, type Evidenc
 
 const SAMPLE_BUDGET = 1500;
 
-/** Frozen implementation of the 675ef39 ASCII-normalized quote check. */
+/** Frozen implementation of the 1921fdb ASCII-normalized quote check. */
 function baselineNormalize(value: string): string {
   return value.toLowerCase()
     .replace(/https?:\/\/\S+/g, ' ')
@@ -157,7 +157,7 @@ export function evaluateEvidenceQuoteFixtures(input: {
     };
   };
   return {
-    baselineCommit: '675ef394c2a1157700be0930c2d05714ad4f1a32',
+    baselineCommit: '1921fdb648193a164b6ffb1e78b4e97788cf8b77',
     candidateRevision: input.candidateRevision ?? null,
     candidateTreeDirty: input.candidateTreeDirty ?? null,
     excerptAlgorithmVersion: 'evidence-excerpts-v1',

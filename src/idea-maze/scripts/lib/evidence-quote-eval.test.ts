@@ -13,11 +13,11 @@ describe('fixed synthetic evidence quote evaluation set', () => {
     expect(EVIDENCE_QUOTE_EVAL_FIXTURES.some((fixture) => fixture.scenario === 'same_problem_different_lexicon')).toBe(true);
   });
 
-  it('compares frozen 675ef39 grounding with T3 on tuning and holdout without LLM calls', () => {
+  it('compares frozen 1921fdb grounding with T3 on tuning and holdout without LLM calls', () => {
     const report = evaluateEvidenceQuoteFixtures();
     expect(report.heldoutWasUsedForTuning).toBe(false);
     expect(report.model).toBeNull();
-    expect(report.baselineCommit).toBe('675ef394c2a1157700be0930c2d05714ad4f1a32');
+    expect(report.baselineCommit).toBe('1921fdb648193a164b6ffb1e78b4e97788cf8b77');
     expect(report.excerptAlgorithmVersion).toBe('evidence-excerpts-v1');
     expect(report.fixtureSetType).toBe('synthetic_regression_suite_created_after_candidate');
     for (const split of ['tuning', 'holdout'] as const) {
