@@ -42,7 +42,14 @@ usage (it exits with an error because required arguments are missing).
 Review metadata uses the neutral actor `user` unless a caller of the library
 supplies `decidedBy`. Rejection reasons and prior publication feedback are
 recorded for scoring and duplicate checks. Approval keeps an opportunity active
-and makes it eligible for exploration. Generated artifact files remain local.
+and makes it eligible for exploration.
+
+Research drafts live in SQLite run metadata and are visible through
+`idea:explain`. Approval through this CLI does not export Markdown. The library
+exposes `publishResearchArtifact` in `lib/review.ts` as a separate publication
+path; no current CLI command invokes it. `idea:artifacts` lists records created
+through that path, so a newly approved CLI draft need not appear in that list.
+Exploration briefs are written to local Markdown files.
 
 ## Exploration
 

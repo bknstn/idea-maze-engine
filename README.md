@@ -116,13 +116,18 @@ Use a slug from `idea:latest` and a research run ID from the opportunity details
 | Approve a research run | `npm run idea:review -- --run-id <run-id> --approve --json` |
 | Reject with feedback | `npm run idea:review -- --run-id <run-id> --reject --reason weak_wtp --json` |
 | Explore an approved opportunity | `npm run idea:explore -- --id <slug> --json` |
-| List local research files | `npm run idea:artifacts -- --json` |
+| List published local artifacts | `npm run idea:artifacts -- --json` |
 | List exploration briefs | `npm run idea:explorations -- --json` |
 
-The angle-bracket values are placeholders. Exploration normally requires an
-approved, active opportunity. Research and exploration output is local Markdown;
-the engine does not publish it to GitHub. See the [CLI guide](docs/cli.md) for
-diagnostics, review reasons, external exploration handoff, and maintenance.
+The angle-bracket values are placeholders. Research drafts are stored in SQLite
+run metadata and can be inspected with `idea:explain`. CLI approval records the
+decision; it does not export a Markdown artifact. Exploration normally requires
+an approved, active opportunity and writes a local Markdown brief. The library
+also has a separate local research-artifact publication function; the current
+CLI does not invoke it. The engine does not publish output to GitHub.
+
+See the [CLI guide](docs/cli.md) for diagnostics, review reasons, external
+exploration handoff, and maintenance.
 
 ## Data and privacy
 
@@ -130,7 +135,7 @@ diagnostics, review reasons, external exploration handoff, and maintenance.
 data/
   lab.db          # Sources, insights, opportunities, feedback, and run history
   raw/            # Collected posts and search responses
-  artifacts/      # Local research Markdown
+  artifacts/      # Published research Markdown
   explorations/   # Local exploration Markdown
 ```
 
@@ -142,7 +147,7 @@ output. When configured, external providers receive selected source context or
 search queries. Review generated material before sharing it. `.gitignore`
 excludes runtime data, local environment files, and common credential formats.
 See [security guidance](SECURITY.md) and the [publication audit](docs/security-audit.md)
-for the audit scope and the remaining historical privacy issue.
+for data-handling guidance and the scope of the repository audit.
 
 ## Development
 

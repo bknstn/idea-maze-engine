@@ -58,7 +58,8 @@ All source lives under `src/idea-maze/scripts/`. The four core ETL stages share 
 | `taste.ts` | Taste profile learning and future score adjustment |
 | `opportunity-state.ts` | Lifecycle transitions and state machine logic |
 | `opportunity-policy.ts` | Score bucketing and evidence-adjusted automation eligibility |
-| `research.ts` | Draft generation from clustered evidence and artifact creation |
+| `research.ts` | Draft generation from clustered evidence and review-gate run metadata |
+| `review.ts` | Local Markdown artifact publication library (not invoked by the CLI review command) |
 | `run-events.ts` | Run lifecycle, event recording, and structured audit trail |
 | `paths.ts` | Data directory resolution (`IDEA_MAZE_HOME` override) |
 
