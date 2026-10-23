@@ -176,4 +176,4 @@ CI runs the verification suite and scans Git history for secrets.
 
 ## License
 
-[Apache License 2.0](LICENSE).
+[MIT License](LICENSE).

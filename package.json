@@ -2,6 +2,7 @@
   "name": "idea-maze-engine",
   "version": "0.1.0",
   "description": "CLI-first Idea Maze product discovery pipeline.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
