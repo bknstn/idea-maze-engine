@@ -33,7 +33,7 @@
     "idea:research:cli": "node --import tsx src/idea-maze/scripts/research-cli-main.ts",
     "idea:mcp": "node --import tsx src/idea-maze/scripts/research-mcp.ts",
     "idea:eval:research": "node --import tsx src/idea-maze/scripts/evaluate-hypothesis-research.ts",
-    "test:deployment": "node --test deploy/data-transfer.test.mjs",
+    "test:deployment": "node --test deploy/data-transfer.test.mjs deploy/healthcheck.test.mjs",
     "test:container": "node deploy/smoke-test.mjs"
   },
   "dependencies": {

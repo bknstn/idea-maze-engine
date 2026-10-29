@@ -29,6 +29,7 @@ const appClients = new Set();
 let composeEnvFile;
 let localImagesOverride;
 let dockerCompose;
+let appMayHaveWrittenState = false;
 let nodeBaseWasPresent = false;
 let proxyWasPresent = false;
 let smokePort;
@@ -54,6 +55,8 @@ try {
   ], { quiet: true });
   writeFileSync(join(fixtureDirectory, "provider-mode"), "block\n", { mode: 0o666 });
   chmodSync(join(fixtureDirectory, "provider-mode"), 0o666);
+  writeFileSync(join(fixtureDirectory, "provider-calls"), "", { mode: 0o666 });
+  chmodSync(join(fixtureDirectory, "provider-calls"), 0o666);
 
   const appEnvironment = join(rootTemp, "app.env");
   const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString().replace(".000Z", "Z");
@@ -103,6 +106,7 @@ try {
     "build",
     ...(localImageOptions.base ? ["--build-arg", `NODE_IMAGE=${buildNodeImage}`] : ["--pull"]),
   ], { inherit: true });
+  appMayHaveWrittenState = true;
   runDocker([...dockerCompose, "up", "-d", "--wait"], { inherit: true });
 
   const serviceUrl = new URL(`https://127.0.0.1:${smokePort}/mcp`);
@@ -220,13 +224,83 @@ try {
   assert.equal(providerCallCount(fixtureDirectory), callCountAtShutdown, "restore and reads must not call providers");
 
   process.stdout.write("Packaging smoke passed: non-root native-SQLite image, TLS/auth, disconnect/reconnect, graceful interruption, restart persistence, and synthetic backup/restore.\n");
+} catch (error) {
+  if (appMayHaveWrittenState) emitFailureDiagnostics();
+  throw error;
 } finally {
   for (const entry of appClients) await closeClient(entry);
-  if (dockerCompose) runDocker([...dockerCompose, "down", "--volumes", "--remove-orphans"], { quiet: true, allowFailure: true });
-  runDocker(["image", "rm", "-f", imageTag], { quiet: true, allowFailure: true });
-  if (!nodeBaseWasPresent) runDocker(["image", "rm", "-f", buildNodeImage], { quiet: true, allowFailure: true });
-  if (!proxyWasPresent) runDocker(["image", "rm", "-f", composeProxyImage], { quiet: true, allowFailure: true });
-  rmSync(rootTemp, { recursive: true, force: true });
+  const cleanupErrors = [];
+  let composeStopped = true;
+  if (dockerCompose) {
+    try {
+      const result = runDocker([...dockerCompose, "down", "--volumes", "--remove-orphans"], { quiet: true, allowFailure: true });
+      composeStopped = result.status === 0;
+      if (!composeStopped) cleanupErrors.push("the temporary Compose project did not stop cleanly");
+    } catch {
+      composeStopped = false;
+      cleanupErrors.push("the temporary Compose project could not be stopped");
+    }
+  }
+
+  let rootTempRemoved = false;
+  if (appMayHaveWrittenState && composeStopped) {
+    try {
+      const cleanupImage = [imageTag, buildNodeImage].find(imageExists);
+      if (!cleanupImage) throw new Error("no local Node cleanup image is available");
+      const cleanupTargets = ["/tmp/state", "/tmp/backups", "/tmp/restored-state"];
+      const cleanupScript = [
+        "const { readdirSync, rmSync } = require('node:fs');",
+        "const { join } = require('node:path');",
+        `for (const root of ${JSON.stringify(cleanupTargets)}) {`,
+        "  for (const name of readdirSync(root)) rmSync(join(root, name), { recursive: true, force: true });",
+        "}",
+      ].join("\n");
+      const result = runDocker([
+        "run", "--rm", "--user", "0:0", "--network", "none", "--read-only",
+        "--mount", `type=bind,source=${rootTemp},target=/tmp`,
+        "--entrypoint", "node", cleanupImage, "-e", cleanupScript,
+      ], { quiet: true, allowFailure: true });
+      if (result.status !== 0) throw new Error("the mounted state cleanup container failed");
+    } catch {
+      cleanupErrors.push("mounted state cleanup failed");
+    }
+  } else if (appMayHaveWrittenState) {
+    cleanupErrors.push("mounted state cleanup was skipped because the service may still be running");
+  }
+
+  if (!appMayHaveWrittenState || composeStopped) {
+    try {
+      rmSync(rootTemp, { recursive: true, force: true });
+      rootTempRemoved = true;
+    } catch {
+      cleanupErrors.push("the temporary smoke workspace could not be removed");
+    }
+  } else {
+    cleanupErrors.push("the temporary smoke workspace was retained to avoid racing a running service");
+  }
+
+  if (rootTempRemoved) {
+    try {
+      const taskImages = [
+        ...(imageExists(imageTag) ? [imageTag] : []),
+        ...(!nodeBaseWasPresent && imageExists(buildNodeImage) ? [buildNodeImage] : []),
+        ...(!proxyWasPresent && imageExists(composeProxyImage) ? [composeProxyImage] : []),
+      ];
+      for (const image of new Set(taskImages)) {
+        const result = runDocker(["image", "rm", "-f", image], { quiet: true, allowFailure: true });
+        if (result.status !== 0) cleanupErrors.push("a task-created image could not be removed");
+      }
+    } catch {
+      cleanupErrors.push("task image availability could not be checked safely");
+    }
+  } else {
+    cleanupErrors.push("task images were retained because the temporary workspace remains");
+  }
+
+  if (cleanupErrors.length > 0) {
+    process.stderr.write(`Packaging smoke cleanup needs attention: ${cleanupErrors.join("; ")}.\n`);
+    process.exitCode = 1;
+  }
 }
 
 function parseLocalImageOptions(argumentsList) {
@@ -262,11 +336,65 @@ function writeComposeEnvironment(path, values) {
   writeFileSync(path, `${content}\n`, { mode: 0o600 });
 }
 
+function emitFailureDiagnostics() {
+  process.stderr.write("Packaging smoke failure diagnostics (container environment omitted):\n");
+  for (const service of ["idea-maze", "tls-proxy"]) {
+    let containerId = "";
+    try {
+      const result = runDocker([...dockerCompose, "ps", "--all", "--quiet", service], {
+        capture: true,
+        allowFailure: true,
+        timeoutMilliseconds: 5_000,
+      });
+      if (result.status === 0) containerId = String(result.stdout ?? "").trim().split(/\s+/u)[0] ?? "";
+    } catch {
+      // Diagnostics must not hide the original smoke failure.
+    }
+    if (!containerId) {
+      process.stderr.write(`${service} state/logs: unavailable\n`);
+      continue;
+    }
+
+    try {
+      const state = runDocker([
+        "inspect", "--format", "{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}", containerId,
+      ], { capture: true, allowFailure: true, timeoutMilliseconds: 5_000 });
+      const stateText = state.status === 0 ? String(state.stdout ?? "").trim().slice(0, 160) : "unavailable";
+      process.stderr.write(`${service} state: ${stateText || "unavailable"}\n`);
+    } catch {
+      process.stderr.write(`${service} state: unavailable\n`);
+    }
+
+    try {
+      const logs = runDocker(["logs", "--tail", "30", containerId], {
+        capture: true,
+        allowFailure: true,
+        timeoutMilliseconds: 5_000,
+      });
+      const text = sanitizeDiagnosticLogs(`${logs.stdout ?? ""}\n${logs.stderr ?? ""}`);
+      if (text) process.stderr.write(`${service} logs (tail):\n${text}\n`);
+    } catch {
+      process.stderr.write(`${service} logs: unavailable\n`);
+    }
+  }
+}
+
+function sanitizeDiagnosticLogs(value) {
+  return String(value).split(/\r?\n/u).slice(-30).map((line) => line
+    .replaceAll(smokeToken, "[redacted]")
+    .replace(/\bBearer\s+[A-Za-z0-9._~-]+/giu, "Bearer [redacted]")
+    .replace(/\b(OPENAI_API_KEY|TAVILY_API_KEY|IDEA_MAZE_MCP_BEARER_TOKEN)\s*[:=]\s*[^,\s;]+/giu, "$1=[redacted]")
+    .slice(0, 300))
+    .filter(Boolean)
+    .join("\n");
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     encoding: "utf8",
     stdio: options.inherit ? "inherit" : options.quiet ? "ignore" : ["ignore", "pipe", "pipe"],
     maxBuffer: 4 * 1024 * 1024,
+    ...(options.timeoutMilliseconds ? { timeout: options.timeoutMilliseconds } : {}),
     env: options.sanitizeComposeEnvironment ? sanitizedComposeEnvironment() : process.env,
   });
   if (result.error) throw new Error(`${command} could not run (${result.error.message}).`);
@@ -295,7 +423,10 @@ function composeValue(args) {
 }
 
 function imageExists(image) {
-  return runDocker(["image", "inspect", image], { quiet: true, allowFailure: true }).status === 0;
+  const result = runDocker(["image", "inspect", "--format", "{{.Id}}", image], { capture: true, allowFailure: true });
+  if (result.status === 0) return true;
+  if (String(result.stderr ?? "").toLowerCase().includes("no such image")) return false;
+  throw new Error("Docker image availability could not be determined safely.");
 }
 
 function sanitizedComposeEnvironment() {

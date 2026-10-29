@@ -9,6 +9,7 @@
 !src/idea-maze/**
 !deploy/
 !deploy/data-transfer.mjs
+!deploy/healthcheck.mjs
 
 # Keep private configuration and runtime state out even if added under an
 # otherwise included source directory later.
