@@ -430,6 +430,106 @@ describe('hypothesis research repositories', () => {
     expect(repos.runs.get(first.run.runId)?.status).toBe('running');
   });
 
+  it('recovers only expired owners, preserves partial results, and advances the fence on takeover', () => {
+    const db = database();
+    const { repos, advance } = repositories(db);
+    const first = createRunnableCase(repos);
+    const second = createRunnableCase(repos);
+    const firstLease = repos.leases.acquire({ runId: first.run.runId, ownerInstanceId: 'worker-expired', ttlMilliseconds: 100 });
+    repos.runs.updateRuntime(first.run.runId, {
+      status: 'running',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      usage: {
+        searchRequests: 1,
+        fetchedPages: 1,
+        modelInputTokens: 120,
+        modelOutputTokens: 40,
+        providerCostMicros: 500,
+        elapsedMilliseconds: 0,
+      },
+    }, firstLease);
+    repos.runs.saveStep(first.run.runId, {
+      name: 'search',
+      status: 'running',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      finishedAt: null,
+      failureCode: null,
+      providerAvailability: 'available',
+    }, firstLease);
+    const partialEvidence = {
+      kind: 'search_snippet' as const,
+      snippetId: 'snippet_partial',
+      queryId: first.run.snapshot.plan.queries[0].queryId,
+      sourceUrl: 'https://example.test/synthetic-result',
+      text: 'A synthetic partial result remains available after interruption.',
+      assessmentEligible: false as const,
+    };
+    repos.evidence.save(first.run.runId, partialEvidence, firstLease);
+    const partialAssessment: ResearchAssessment = {
+      outcome: 'insufficient_evidence',
+      summary: 'A partial synthetic assessment is retained.',
+      rationale: 'The run stopped before enough original sources were checked.',
+      claims: [],
+      coverageGaps: [],
+      nextExperiment: 'Collect additional original sources.',
+    };
+    repos.assessments.save(first.run.runId, partialAssessment, firstLease);
+
+    expect(repos.leases.recoverExpired()).toBeNull();
+    expect(repos.runs.get(first.run.runId)?.status).toBe('running');
+    advance(101);
+    expect(repos.leases.recoverExpired()).toBe(first.run.runId);
+
+    const recovered = repos.runs.get(first.run.runId)!;
+    expect(recovered).toMatchObject({
+      status: 'interrupted',
+      stoppingReason: 'lease_lost',
+      assessment: partialAssessment,
+      usage: {
+        searchRequests: 1,
+        fetchedPages: 1,
+        modelInputTokens: null,
+        modelOutputTokens: null,
+        providerCostMicros: null,
+        elapsedMilliseconds: 101,
+      },
+    });
+    expect(recovered.coverageGaps).toContainEqual({
+      reason: 'interrupted',
+      detail: 'The run owner lease expired before the run completed.',
+      queryId: null,
+      hypothesisId: null,
+    });
+    expect(recovered.steps.find((step) => step.name === 'search')).toMatchObject({ status: 'cancelled', finishedAt: '2026-01-01T00:00:00.101Z' });
+    expect(repos.evidence.list(first.run.runId)).toEqual([partialEvidence]);
+    expect(() => repos.runs.updateRuntime(first.run.runId, { status: 'completed' }, firstLease)).toThrow(StaleWorkspaceLeaseError);
+
+    const afterRecovery = db.prepare('SELECT fencing_epoch, owner_instance_id FROM research_workspace_leases WHERE workspace_key = ?')
+      .get('workspace-a') as { fencing_epoch: number; owner_instance_id: string | null };
+    expect(afterRecovery).toEqual({ fencing_epoch: firstLease.fencingToken, owner_instance_id: null });
+
+    const takeover = repos.leases.acquireWithRecovery({ runId: second.run.runId, ownerInstanceId: 'worker-takeover', ttlMilliseconds: 100 });
+    expect(takeover.recoveredRunId).toBeNull();
+    expect(takeover.lease.fencingToken).toBeGreaterThan(firstLease.fencingToken);
+    expect(repos.leases.recoverExpired()).toBeNull();
+  });
+
+  it('atomically recovers an expired run when acquiring a replacement owner', () => {
+    const db = database();
+    const { repos, advance } = repositories(db);
+    const first = createRunnableCase(repos);
+    const second = createRunnableCase(repos);
+    const firstLease = repos.leases.acquire({ runId: first.run.runId, ownerInstanceId: 'worker-before-crash', ttlMilliseconds: 100 });
+    repos.runs.updateRuntime(first.run.runId, { status: 'running' }, firstLease);
+    advance(101);
+
+    const result = repos.leases.acquireWithRecovery({ runId: second.run.runId, ownerInstanceId: 'worker-after-restart', ttlMilliseconds: 100 });
+    expect(result.recoveredRunId).toBe(first.run.runId);
+    expect(result.lease.fencingToken).toBeGreaterThan(firstLease.fencingToken);
+    expect(repos.runs.get(first.run.runId)).toMatchObject({ status: 'interrupted', stoppingReason: 'lease_lost' });
+    expect(repos.leases.assertCurrent(result.lease)).toBeUndefined();
+  });
+
   it('records cancellation atomically once and never changes a terminal run back to cancelling', () => {
     const db = database();
     const { repos } = repositories(db);
@@ -440,9 +540,27 @@ describe('hypothesis research repositories', () => {
     expect(first.status).toBe('cancellation_requested');
     expect(repeated.cancelRequestedAt).toBe('2026-01-01T00:00:02.000Z');
 
-    const completed = repos.runs.updateRuntime(run.runId, { status: 'completed', finishedAt: '2026-01-01T00:00:04.000Z' }, lease);
+    const ignoredRestart = repos.runs.updateRuntime(run.runId, { status: 'running' }, lease);
+    expect(ignoredRestart.status).toBe('cancellation_requested');
+    const cancelled = repos.runs.updateRuntime(run.runId, {
+      status: 'cancelled',
+      stoppingReason: 'cancelled',
+      finishedAt: '2026-01-01T00:00:04.000Z',
+    }, lease);
+    expect(repos.runs.updateRuntime(run.runId, { status: 'running' }, lease).status).toBe('cancelled');
     const afterTerminalCancel = repos.runs.requestCancellation(run.runId, '2026-01-01T00:00:05.000Z');
-    expect(afterTerminalCancel.status).toBe('completed');
-    expect(afterTerminalCancel.cancelRequestedAt).toBe(completed.cancelRequestedAt);
+    expect(afterTerminalCancel.status).toBe('cancelled');
+    expect(afterTerminalCancel.cancelRequestedAt).toBe(cancelled.cancelRequestedAt);
+
+    expect(repos.leases.release(lease)).toBe(true);
+    const completedRun = createRunnableCase(repos).run;
+    const completedLease = repos.leases.acquire({ runId: completedRun.runId, ownerInstanceId: 'worker-terminal', ttlMilliseconds: 60_000 });
+    const completed = repos.runs.updateRuntime(completedRun.runId, {
+      status: 'completed',
+      stoppingReason: 'all_steps_finished',
+      finishedAt: '2026-01-01T00:00:06.000Z',
+    }, completedLease);
+    expect(repos.runs.updateRuntime(completedRun.runId, { status: 'running' }, completedLease).status).toBe('completed');
+    expect(completed.status).toBe('completed');
   });
 });

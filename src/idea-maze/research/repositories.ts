@@ -278,6 +278,10 @@ export interface ResearchRepositories {
   };
   leases: {
     acquire(request: LeaseRequest): WorkspaceRunLease;
+    /** Atomically recover an expired owner, then assign the next fencing epoch. */
+    acquireWithRecovery(request: LeaseRequest): { lease: WorkspaceRunLease; recoveredRunId: string | null };
+    /** Mark an expired active run interrupted and clear its lease, preserving the epoch. */
+    recoverExpired(): string | null;
     renew(lease: WorkspaceRunLease, ttlMilliseconds: number): WorkspaceRunLease;
     release(lease: WorkspaceRunLease): boolean;
     assertCurrent(lease: WorkspaceRunLease): void;
@@ -522,6 +526,70 @@ export function createResearchRepositories(options: ResearchRepositoryOptions): 
         AND fencing_epoch = ? AND expires_at_utc > ?
     `).get(workspaceKey, lease.runId, lease.ownerInstanceId, lease.fencingToken, now) as { current: number } | undefined;
     if (!row) throw new StaleWorkspaceLeaseError();
+  }
+
+  function recoverExpiredLeaseInTransaction(): string | null {
+    const now = timestamp();
+    const lease = db.prepare('SELECT * FROM research_workspace_leases WHERE workspace_key = ?')
+      .get(workspaceKey) as LeaseRow | undefined;
+    if (!lease?.owner_instance_id || !lease.run_id || !lease.expires_at_utc || lease.expires_at_utc > now) return null;
+
+    const run = readRun(lease.run_id);
+    if (run && ['queued', 'running', 'cancellation_requested'].includes(run.status)) {
+      const coverageGaps = run.coverageGaps.some((gap) => gap.reason === 'interrupted')
+        ? run.coverageGaps
+        : [...run.coverageGaps, {
+            reason: 'interrupted' as const,
+            detail: 'The run owner lease expired before the run completed.',
+            queryId: null,
+            hypothesisId: null,
+          }];
+      db.prepare(`
+        UPDATE research_runs
+        SET status = 'interrupted', stopping_reason = 'lease_lost', finished_at_utc = ?, coverage_gaps_json = ?, usage_json = ?
+        WHERE workspace_key = ? AND run_id = ? AND status IN ('queued', 'running', 'cancellation_requested')
+      `).run(now, canonicalJson(coverageGaps), canonicalJson({
+        ...run.usage,
+        modelInputTokens: null,
+        modelOutputTokens: null,
+        providerCostMicros: null,
+        elapsedMilliseconds: Math.max(0, Date.parse(now) - Date.parse(run.createdAt)),
+      }), workspaceKey, run.runId);
+      db.prepare(`
+        UPDATE research_run_steps SET status = 'cancelled', finished_at_utc = ?
+        WHERE workspace_key = ? AND run_id = ? AND status = 'running'
+      `).run(now, workspaceKey, run.runId);
+    }
+
+    const cleared = db.prepare(`
+      UPDATE research_workspace_leases
+      SET owner_instance_id = NULL, run_id = NULL, expires_at_utc = NULL, renewed_at_utc = NULL
+      WHERE workspace_key = ? AND fencing_epoch = ? AND owner_instance_id = ? AND run_id = ? AND expires_at_utc <= ?
+    `).run(workspaceKey, lease.fencing_epoch, lease.owner_instance_id, lease.run_id, now);
+    return cleared.changes === 1 ? lease.run_id : null;
+  }
+
+  function acquireLeaseInTransaction(request: LeaseRequest): WorkspaceRunLease {
+    if (!readRunRow(request.runId)) throw new RepositoryNotFoundError('run', request.runId);
+    const now = timestamp();
+    const row = db.prepare('SELECT * FROM research_workspace_leases WHERE workspace_key = ?')
+      .get(workspaceKey) as LeaseRow | undefined;
+    if (row?.owner_instance_id && row.expires_at_utc && row.expires_at_utc > now) {
+      throw new ActiveWorkspaceLeaseError(row.run_id!);
+    }
+    const fencingToken = (row?.fencing_epoch ?? 0) + 1;
+    const expiresAt = new Date(Date.parse(now) + request.ttlMilliseconds).toISOString();
+    db.prepare(`
+      INSERT INTO research_workspace_leases(workspace_key, fencing_epoch, owner_instance_id, run_id, expires_at_utc, renewed_at_utc)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(workspace_key) DO UPDATE SET
+        fencing_epoch = excluded.fencing_epoch,
+        owner_instance_id = excluded.owner_instance_id,
+        run_id = excluded.run_id,
+        expires_at_utc = excluded.expires_at_utc,
+        renewed_at_utc = excluded.renewed_at_utc
+    `).run(workspaceKey, fencingToken, request.ownerInstanceId, request.runId, expiresAt, now);
+    return { workspaceKey, runId: request.runId, ownerInstanceId: request.ownerInstanceId, fencingToken, expiresAt, renewedAt: now };
   }
 
   function observeExternalOperation<T>(
@@ -884,6 +952,13 @@ export function createResearchRepositories(options: ResearchRepositoryOptions): 
         return repositories.leases.withWrite(lease, () => {
           const row = requireRunRow(runId);
           if (lease.runId !== runId) throw new StaleWorkspaceLeaseError();
+          const current = readRun(runId);
+          if (!current) throw new RepositoryNotFoundError('run', runId);
+          if (update.status !== undefined &&
+              ['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status) &&
+              update.status !== current.status) return current;
+          if (current.status === 'cancellation_requested' &&
+              update.status !== undefined && update.status !== 'cancelled') return current;
           const fields: string[] = [];
           const values: unknown[] = [];
           const assignJson = (column: string, value: unknown): void => {
@@ -1264,28 +1339,19 @@ export function createResearchRepositories(options: ResearchRepositoryOptions): 
       acquire(request): WorkspaceRunLease {
         validateLeaseTtl(request.ttlMilliseconds);
         requireText(request.ownerInstanceId, 'ownerInstanceId', 200);
+        return withTransaction(() => acquireLeaseInTransaction(request));
+      },
+      acquireWithRecovery(request): { lease: WorkspaceRunLease; recoveredRunId: string | null } {
+        validateLeaseTtl(request.ttlMilliseconds);
+        requireText(request.ownerInstanceId, 'ownerInstanceId', 200);
         return withTransaction(() => {
-          if (!readRunRow(request.runId)) throw new RepositoryNotFoundError('run', request.runId);
-          const now = timestamp();
-          const row = db.prepare('SELECT * FROM research_workspace_leases WHERE workspace_key = ?')
-            .get(workspaceKey) as LeaseRow | undefined;
-          if (row?.owner_instance_id && row.expires_at_utc && row.expires_at_utc > now) {
-            throw new ActiveWorkspaceLeaseError(row.run_id!);
-          }
-          const fencingToken = (row?.fencing_epoch ?? 0) + 1;
-          const expiresAt = new Date(Date.parse(now) + request.ttlMilliseconds).toISOString();
-          db.prepare(`
-            INSERT INTO research_workspace_leases(workspace_key, fencing_epoch, owner_instance_id, run_id, expires_at_utc, renewed_at_utc)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(workspace_key) DO UPDATE SET
-              fencing_epoch = excluded.fencing_epoch,
-              owner_instance_id = excluded.owner_instance_id,
-              run_id = excluded.run_id,
-              expires_at_utc = excluded.expires_at_utc,
-              renewed_at_utc = excluded.renewed_at_utc
-          `).run(workspaceKey, fencingToken, request.ownerInstanceId, request.runId, expiresAt, now);
-          return { workspaceKey, runId: request.runId, ownerInstanceId: request.ownerInstanceId, fencingToken, expiresAt, renewedAt: now };
+          const recoveredRunId = recoverExpiredLeaseInTransaction();
+          const lease = acquireLeaseInTransaction(request);
+          return { lease, recoveredRunId };
         });
+      },
+      recoverExpired(): string | null {
+        return withTransaction(() => recoverExpiredLeaseInTransaction());
       },
       renew(lease, ttlMilliseconds): WorkspaceRunLease {
         validateLeaseTtl(ttlMilliseconds);
