@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm test",
+    "verify": "npm run typecheck && npm test && npm run test:deployment",
     "test": "vitest run",
     "test:watch": "vitest",
     "idea:status": "tsx src/idea-maze/scripts/pipeline-status.ts",
@@ -32,7 +32,9 @@
     "idea:review": "tsx src/idea-maze/scripts/apply-human-review.ts",
     "idea:research:cli": "node --import tsx src/idea-maze/scripts/research-cli-main.ts",
     "idea:mcp": "node --import tsx src/idea-maze/scripts/research-mcp.ts",
-    "idea:eval:research": "node --import tsx src/idea-maze/scripts/evaluate-hypothesis-research.ts"
+    "idea:eval:research": "node --import tsx src/idea-maze/scripts/evaluate-hypothesis-research.ts",
+    "test:deployment": "node --test deploy/data-transfer.test.mjs",
+    "test:container": "node deploy/smoke-test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.1.2",

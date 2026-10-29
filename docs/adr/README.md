@@ -31,6 +31,7 @@ uses the order of changes on the main branch.
 | [0020: Bind MCP transports to the real research runtime](0020-mcp-runtime-entrypoint.md) | 2026-10-29 | Accepted |
 | [0021: Run a frozen offline research evaluation through the application](0021-offline-research-evaluation.md) | 2026-10-29 | Accepted |
 | [0022: Verify one research workflow across CLI and MCP](0022-cross-interface-research-workflow.md) | 2026-10-29 | Accepted |
+| [0023: Package the single-owner service with a loopback TLS sidecar](0023-single-owner-service-packaging.md) | 2026-10-29 | Accepted |
 
 The [discovery-gate recalibration proposal](../proposals/discovery-gate-recalibration.md)
 is not an accepted decision and does not describe current policy. Current usage

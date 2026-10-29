@@ -38,6 +38,13 @@ data/raw/
 data/artifacts/
 data/artifacts-repo/
 ipc/
+/artifacts/
+
+# Self-hosting local credentials, persistent workspace, backups, and TLS keys.
+deploy/idea-maze.env
+deploy/state*/
+deploy/backups/
+deploy/certs/
 
 # Legacy local data from the previous grouped layout.
 groups/idea-maze/data/

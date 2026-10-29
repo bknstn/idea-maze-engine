@@ -1,0 +1,45 @@
+services:
+  idea-maze:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: ${IDEA_MAZE_IMAGE:-idea-maze-engine:local}
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    restart: unless-stopped
+    stop_grace_period: 15s
+    ports:
+      - "${HTTPS_BIND:-127.0.0.1}:${HTTPS_PORT:-8443}:8443"
+    env_file:
+      - ${IDEA_MAZE_ENV_FILE:-./idea-maze.env}
+    environment:
+      IDEA_MAZE_HOME: /data
+      IDEA_MAZE_MCP_HTTP_HOST: 127.0.0.1
+      IDEA_MAZE_MCP_HTTP_PORT: "8787"
+    volumes:
+      - ${IDEA_MAZE_STATE_DIR:-./state}:/data
+      - ${IDEA_MAZE_BACKUP_DIR:-./backups}:/backups
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/healthz',{signal:AbortSignal.timeout(2000)}).then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  tls-proxy:
+    image: nginx:1.30.4-alpine3.24@sha256:dc5069ad14f19660b141b21236140b91656bf89bbc3e2417c70ae650cd66104c
+    profiles: [proxy]
+    depends_on:
+      idea-maze:
+        condition: service_healthy
+    network_mode: service:idea-maze
+    volumes:
+      - ${IDEA_MAZE_NGINX_CONFIG:-./nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ${IDEA_MAZE_CERT_DIR:-./certs}:/etc/nginx/certs:ro
+    restart: unless-stopped

@@ -1,0 +1,17 @@
+services:
+  idea-maze:
+    restart: "no"
+    environment:
+      NODE_OPTIONS: --import=/tmp/smoke-provider.mjs
+      IDEA_MAZE_SMOKE_MODE_FILE: /smoke/provider-mode
+      IDEA_MAZE_SMOKE_CALL_LOG: /smoke/provider-calls
+      TAVILY_API_KEY: synthetic-smoke-fixture-only
+    networks:
+      - smoke-isolated
+    volumes:
+      - ${SMOKE_PROVIDER_FIXTURE}:/tmp/smoke-provider.mjs:ro
+      - ${SMOKE_FILES_DIR}:/smoke
+
+networks:
+  smoke-isolated:
+    internal: true

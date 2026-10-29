@@ -1,0 +1,7 @@
+# Synthetic request idempotencyKey fixtures in planner tests; these are not credentials.
+# Exact scope: only the five flagged lines added in this historical commit.
+4c5406efde807cbc1a9e10d07d9722819bf7dee6:src/idea-maze/research/planner.test.ts:generic-api-key:185
+4c5406efde807cbc1a9e10d07d9722819bf7dee6:src/idea-maze/research/planner.test.ts:generic-api-key:218
+4c5406efde807cbc1a9e10d07d9722819bf7dee6:src/idea-maze/research/planner.test.ts:generic-api-key:243
+4c5406efde807cbc1a9e10d07d9722819bf7dee6:src/idea-maze/research/planner.test.ts:generic-api-key:399
+4c5406efde807cbc1a9e10d07d9722819bf7dee6:src/idea-maze/research/planner.test.ts:generic-api-key:467

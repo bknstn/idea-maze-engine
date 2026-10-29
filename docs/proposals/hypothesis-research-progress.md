@@ -26,14 +26,15 @@ is distinct from an integrated release; partial tasks remain open on GitHub.
 | T10 / #18 | Published `9d0450b`: durable coordination, fenced recovery, bounded cancellation and conservative usage accounting |
 | T11 / #19 | Published `9fdee9a`: shared application/runtime, bounded collection, verified classification and explicit coverage |
 | T12 / #20 | Published `57123c6`: stdin JSON CLI and process entrypoint; 33 CLI regressions, including actual runtime workflow |
-| T14 / #22 | Published with this checkpoint: nonempty CLI/HTTP parity, shared workspace process reads, revision/cancel/diagnostic checks |
-| T19 / #27, T16 / #24 | Packaging and release docs/checks pending |
+| T14 / #22 | Published `bca860c`: nonempty CLI/HTTP parity, shared workspace process reads, revision/cancel/diagnostic checks |
+| T19 / #27 | Packaging assets published with this checkpoint; standard container CI acceptance pending |
+| T16 / #24 | Release docs and clean-install verification prepared; final packaging/CI gate pending |
 | T17 / #25 | [Pilot protocol prepared](hypothesis-research-pilot-protocol.md); consenting participants and explicit data/spend scope still required |
 
 ## Verification
 
 Latest integrated check: `npm run verify` passed TypeScript and **55 test files /
-453 tests**. Spawned-process and loopback SDK tests require local IPC/socket
+453 tests**, plus **3 deployment backup/restore tests**. Spawned-process and loopback SDK tests require local IPC/socket
 permission outside the restricted sandbox. Mocked providers and synthetic SQLite
 fixtures are not live research or product-usefulness validation.
 
@@ -97,11 +98,20 @@ inspecting holdout results; do not tune against the holdout. The corpus digest i
 
 No temporary helper scripts were created. Test-created databases/directories are
 cleaned by their fixtures. T10, T11, and T12 are archived and checkout removal verified.
-T13 and T15 are archived and checkout removal verified. T14 is integrated and
-ready for archival after publication; its dependency symlink was removed.
+T13, T14, and T15 are archived and checkout removal verified. T19 helpers,
+Docker imports, test state and dependency symlink were removed; its worktree stays
+active until the container CI result is reviewed.
 
 The first holdout was run once at evaluator freeze
 `220a9bea86bce0d87ba1196e4d948d2c060650a681d1352e8b47663c581a1106`.
 See [the full evaluation report](../evaluations/hypothesis-research-v1.md) for
 failures, unknown fields and interpretation limits. No implementation was tuned
 after observing those outcomes.
+
+Packaging local checks passed SQLite WAL backup/restore, stale-sidecar and
+corrupt/symlink refusal. Compose configuration and pinned image content were
+verified; local Docker build API stalls prevented the full smoke. The new
+container CI job runs the standard pinned path independently. Do not mark #27
+complete until that result passes review. Gitleaks 8.30.1 full-history scan
+passed after five exact historical fingerprints for synthetic planner
+idempotency-key inputs; no broad rule suppression was added.
