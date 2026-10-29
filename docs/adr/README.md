@@ -22,6 +22,7 @@ uses the order of changes on the main branch.
 | [0011: Verify source excerpts against visible body windows](0011-versioned-source-excerpts.md) | 2026-09-24 | Accepted |
 | [0012: Track Reddit ingestion ranges and coverage gaps](0012-reddit-coverage-accounting.md) | 2026-09-25 | Accepted |
 | [0013: Optional shadow evidence assessment](0013-shadow-evidence-assessment.md) | 2026-09-25 | Accepted |
+| [0014: Isolate hypothesis research from discovery scoring](0014-hypothesis-research-foundation.md) | 2026-10-29 | Accepted |
 
 The [discovery-gate recalibration proposal](../proposals/discovery-gate-recalibration.md)
 is not an accepted decision and does not describe current policy. Current usage

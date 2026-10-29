@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 
+import { migrateResearchSchema } from '../../research/migrations.ts';
 import { AUTO_PUBLISH_MIN_BUCKET } from './opportunity-policy.ts';
 
 /**
@@ -309,6 +310,10 @@ export function initSchema(db: Database.Database): void {
         VALUES (new.id, new.title, new.thesis);
     END;
   `);
+
+  // The hypothesis-research schema is additive and intentionally isolated
+  // from the legacy opportunity/run lifecycle above.
+  migrateResearchSchema(db);
 }
 
 function getColumnNames(db: Database.Database, table: string): Set<string> {
