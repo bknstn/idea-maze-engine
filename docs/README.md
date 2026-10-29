@@ -7,6 +7,12 @@ installation, and the first run.
 | --- | --- |
 | [Configuration](configuration.md) | Environment variables, subreddit setup, storage, and provider data flow |
 | [CLI guide](cli.md) | Research, review, exploration, inspection, and maintenance commands |
+| [Hypothesis research quickstart](guides/hypothesis-research-quickstart.md) | Start a user-led case and hypothesis through the shared application |
+| [Hypothesis research workflow example](examples/hypothesis-research-workflow.md) | Follow a synthetic case through the CLI, HTTP MCP, and stdio MCP interfaces |
+| [MCP service guide](guides/hypothesis-research-mcp.md) | Authenticated HTTP and local stdio setup, lifecycle, and privacy boundaries |
+| [Self-hosted MCP service](guides/self-hosting.md) | Pinned Compose package, local state volume, backup, and restore |
+| [Release verification](guides/release-verification.md) | Clean install, runtime compatibility, dependency licenses, evaluation limits |
+| [Hypothesis research evaluation](evaluations/hypothesis-research-v1.md) | Frozen mocked-provider results and their limitations |
 | [Architecture decisions](adr/README.md) | Implemented design decisions ordered by adoption date |
 | [Quote evaluation](evidence-quote-evaluation-2026-09-24.md) | Reproducing the synthetic evidence-grounding evaluation |
 | [Publication audit](security-audit.md) | Audit scope, findings, and historical privacy follow-up |

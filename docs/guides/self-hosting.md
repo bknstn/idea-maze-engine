@@ -125,10 +125,10 @@ has been checked.
 
 ## Packaging checks
 
-`node --test deploy/data-transfer.test.mjs` exercises synthetic WAL snapshots,
+`npm run test:deployment` exercises the policy-aware health probe and synthetic WAL snapshots,
 restore, corrupt database rejection, stale sidecars, and symlink rejection.
-`node deploy/smoke-test.mjs` builds the pinned image and runs Compose with an
-offline mocked provider calls. The smoke uses the normal Compose bridge so its
+`node deploy/smoke-test.mjs` builds the pinned image and runs Compose using
+offline mocked providers. The smoke uses the normal Compose bridge so its
 published TLS endpoint can be reached from the host. A test-only preload returns
 empty synthetic search results and rejects other provider fetch destinations;
 the run has no real model credentials. It checks authentication,

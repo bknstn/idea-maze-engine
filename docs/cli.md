@@ -5,6 +5,42 @@ Run commands from the repository root after `npm ci`. npm passes arguments after
 replace with your own. JSON mode is supported by the commands that show it;
 individual ingestion/extraction/refresh/process stages print progress text.
 
+## Case-first workspace and provider behavior
+
+The case-first research CLI and MCP service call the same application and
+database schema. They use `IDEA_MAZE_HOME` when set and otherwise bind to the
+current working directory, which must already exist. Requests cannot select a
+workspace, database path, provider, credential, shell command, or arbitrary
+file path. See [workspace configuration](configuration.md#workspace-and-storage)
+before using the legacy opportunity pipeline and case-first workflow together.
+
+Case creation, reads, supplied-plan validation, local bounded plan generation,
+status, and result pagination do not require model credentials. Model-generated
+hypothesis suggestions are an explicit opt-in and require a configured model;
+searching requires the configured search adapter. If those providers are
+unconfigured or unavailable, a run can complete with `insufficient_evidence` and
+provider coverage gaps. That result describes unavailable collection, not
+evidence against the hypothesis. The legacy keyword fallback applies to its
+older extraction stage, not this research service.
+
+Every plan remains within these application ceilings. A supplied plan may use
+lower values:
+
+| Resource | Maximum |
+| --- | ---: |
+| Search queries | 40 |
+| Fetched pages | 100 |
+| Follow-up rounds | 3 |
+| Wall time | 900 seconds |
+| Model input tokens | 20,000 |
+| Model output tokens | 20,000 |
+
+Run status reports usage where providers make it available. Unknown token or
+cost values remain null; these ceilings do not establish a hard currency cap.
+Use provider-side spending limits when a monetary ceiling is required. The
+case-first provider data sent outside the workspace and the distinct legacy
+workspace defaults are described in [configuration](configuration.md).
+
 ## Pipeline and inspection
 
 | Command | Behavior |
@@ -58,8 +94,9 @@ remaining commands map to the shared application tools:
 A synthetic case-create request:
 
 ```bash
-printf '%s' '{"idempotencyKey":"demo-case-create-0001","intake":{"ideaSummary":"A sample workflow helper","targetUser":"Independent tutors","problem":"Session notes take time","proposedSolution":"A structured note template"},"hypotheses":[{"claim":"Tutors spend time rewriting session notes"}]}' \
-  | npm run --silent idea:research:cli -- case-create
+cat <<'JSON' | npm run --silent idea:research:cli -- case-create
+{"idempotencyKey":"demo-case-create-0001","intake":{"ideaSummary":"A sample workflow helper","targetUser":"Independent tutors","problem":"Session notes take time","proposedSolution":"A structured note template"},"hypotheses":[{"claim":"Tutors spend time rewriting session notes"}]}
+JSON
 ```
 
 Use IDs and revisions returned in each envelope for later commands. A plan may
