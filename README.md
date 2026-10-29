@@ -121,6 +121,8 @@ Use a slug from `idea:latest` and a research run ID from the opportunity details
 
 For case-first hypothesis research, run `npm run idea:research:cli -- --help`;
 see the [hypothesis research CLI guide](docs/cli.md#case-first-hypothesis-research-cli).
+Agent clients can use the [HTTP or stdio MCP service](docs/guides/hypothesis-research-mcp.md)
+through `npm run --silent idea:mcp` with the documented environment configuration.
 
 The angle-bracket values are placeholders. Research drafts are stored in SQLite
 run metadata and can be inspected with `idea:explain`. CLI approval records the

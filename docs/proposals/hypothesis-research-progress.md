@@ -20,19 +20,19 @@ is distinct from an integrated release; partial tasks remain open on GitHub.
 | T07 / #15 | Published `d043c1e`: DNS-pinned static public-original retrieval and normalization |
 | T08 / #16 | Published `57cd579`: Verified candidate mapping, exact provenance, source grouping and uncertainty |
 | T18 / #26 | Published `f191dfb`: mandatory owner HTTP policy, auth/rotation/revocation, Host/Origin/proxy/rate/body checks |
-| T13 / #21 | Partially published `457a9f0`: official SDK protocol/auth adapters and synthetic fake-app tests; real application wiring remains open under #21 pending T11 |
+| T13 / #21 | Published with this checkpoint: HTTP/stdio MCP entrypoint and official SDK checks against the actual runtime with mocked providers |
 | T15 / #23 | Partially published `310ec19`: frozen 18-fixture corpus (digest below); real-path evaluation runner remains pending under #23 |
 | T09 / #17 | Published `bdb7430`: verified claim assessments and bounded JSON/Markdown result pages |
 | T10 / #18 | Published `9d0450b`: durable coordination, fenced recovery, bounded cancellation and conservative usage accounting |
 | T11 / #19 | Published `9fdee9a`: shared application/runtime, bounded collection, verified classification and explicit coverage |
-| T12 / #20 | Published with this checkpoint: stdin JSON CLI and process entrypoint; 33 CLI regressions, including actual runtime workflow |
+| T12 / #20 | Published `57123c6`: stdin JSON CLI and process entrypoint; 33 CLI regressions, including actual runtime workflow |
 | T19 / #27, T14 / #22, T16 / #24 | Packaging, cross-interface integration, release docs/checks pending |
 | T17 / #25 | Separately scoped human pilot; participants and explicit data/spend scope still required |
 
 ## Verification
 
-Latest integrated check: `npm run verify` passed TypeScript and **52 test files /
-436 tests**. Spawned-process and loopback SDK tests require local IPC/socket
+Latest integrated check: `npm run verify` passed TypeScript and **54 test files /
+445 tests**. Spawned-process and loopback SDK tests require local IPC/socket
 permission outside the restricted sandbox. Mocked providers and synthetic SQLite
 fixtures are not live research or product-usefulness validation.
 
@@ -69,7 +69,7 @@ platform/libc metadata was preserved. No runtime model defaults were changed.
 
 Read this checkpoint, the contract proposal and repository safety instructions.
 Use fresh Luna xhigh implementation agents; the coordinator reviews before
-acceptance and publishes a separate commit per completed issue. Finish #21/#23,
+acceptance and publishes a separate commit per completed issue. Finish #23,
 then package #27, verify #22, and complete #24.
 Preserve the separate pilot scope for #25.
 Shared files have one owner at a time; report interface requests before editing.
@@ -96,6 +96,6 @@ inspecting holdout results; do not tune against the holdout. The corpus digest i
 `13b7ccf965043c8dec05f7189b057308c996de9bd01171fb25dfd141bf517c26`.
 
 No temporary helper scripts were created. Test-created databases/directories are
-cleaned by their fixtures. T10 and T11 are archived and checkout removal verified.
-T12 is integrated and ready for archival after publication. T13 and T15 worktrees
-remain active until integration; remove dependency symlinks and archive them after verification.
+cleaned by their fixtures. T10, T11, and T12 are archived and checkout removal verified.
+T13 is integrated and ready for archival after publication. The T15 worktree
+remains active until integration; remove its dependency symlink and archive it after verification.

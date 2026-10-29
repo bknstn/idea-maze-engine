@@ -44,7 +44,9 @@ export async function startStdioResearchServer(
   let closing: Promise<void> | undefined;
   let close: () => Promise<void>;
   const onInputEnd = () => {
-    void close().catch(() => undefined);
+    void close().catch(() => {
+      process.stderr.write("The MCP stdio service could not finish shutting down cleanly.\n");
+    });
   };
   close = (): Promise<void> => {
     if (closing) return closing;

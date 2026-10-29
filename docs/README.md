@@ -15,8 +15,9 @@ installation, and the first run.
 ## Proposals
 
 [User-led hypothesis research and MCP delivery plan](proposals/hypothesis-research-mcp-plan.md)
-is a proposed implementation baseline with bounded tasks, dependencies, acceptance
-criteria, and CLI/MCP release milestones. It is not implemented behavior.
+tracks the roadmap and remaining release work. Implemented interfaces are documented
+in the [CLI guide](cli.md#case-first-hypothesis-research-cli),
+[MCP guide](guides/hypothesis-research-mcp.md), and accepted ADRs.
 
 [Discovery-gate recalibration](proposals/discovery-gate-recalibration.md) is an
 unimplemented historical proposal. It is kept separately from accepted ADRs so
