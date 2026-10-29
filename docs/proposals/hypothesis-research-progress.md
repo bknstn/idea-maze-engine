@@ -19,12 +19,13 @@ is distinct from an integrated release; partial tasks remain open on GitHub.
 | T06 / #14 | Published `00807e3`: Bounded cancellable Tavily adapter; exact planned outbound query |
 | T07 / #15 | Published `d043c1e`: DNS-pinned static public-original retrieval and normalization |
 | T08 / #16 | Published `57cd579`: Verified candidate mapping, exact provenance, source grouping and uncertainty |
-| T18 / #26 | Published with security commit: mandatory owner HTTP policy, auth/rotation/revocation, Host/Origin/proxy/rate/body checks |
-| T13 / #21 | Protocol/auth phase accepted with official SDK against fake app; real application wiring pending T11 |
+| T18 / #26 | Published `f191dfb`: mandatory owner HTTP policy, auth/rotation/revocation, Host/Origin/proxy/rate/body checks |
+| T13 / #21 | Partially published: official SDK protocol/auth adapters and synthetic fake-app tests; real application wiring remains open under #21 pending T11 |
 | T15 / #23 | Rubric and 18 synthetic fixtures accepted; real-path evaluation runner pending T09/T11 |
 | T09 / #17 | Published `bdb7430`: verified claim assessments and bounded JSON/Markdown result pages |
 | T10 / #18 | Luna implementation in a separate managed worktree; concurrency/recovery review pending |
-| T11 / #19, T12 / #20 | Research orchestration and CLI remain pending |
+| T11 / #19 | Research orchestration remains pending |
+| T12 / #20 | CLI implementation in a managed worktree; review pending |
 | T19 / #27, T14 / #22, T16 / #24 | Packaging, cross-interface integration, release docs/checks pending |
 | T17 / #25 | Separately scoped human pilot; participants and explicit data/spend scope still required |
 
