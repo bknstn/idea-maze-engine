@@ -20,8 +20,8 @@ is distinct from an integrated release; partial tasks remain open on GitHub.
 | T07 / #15 | Published `d043c1e`: DNS-pinned static public-original retrieval and normalization |
 | T08 / #16 | Published `57cd579`: Verified candidate mapping, exact provenance, source grouping and uncertainty |
 | T18 / #26 | Published `f191dfb`: mandatory owner HTTP policy, auth/rotation/revocation, Host/Origin/proxy/rate/body checks |
-| T13 / #21 | Partially published: official SDK protocol/auth adapters and synthetic fake-app tests; real application wiring remains open under #21 pending T11 |
-| T15 / #23 | Rubric and 18 synthetic fixtures accepted; real-path evaluation runner pending T09/T11 |
+| T13 / #21 | Partially published `457a9f0`: official SDK protocol/auth adapters and synthetic fake-app tests; real application wiring remains open under #21 pending T11 |
+| T15 / #23 | Partially published: frozen 18-fixture corpus (digest below); real-path evaluation runner remains pending under #23 |
 | T09 / #17 | Published `bdb7430`: verified claim assessments and bounded JSON/Markdown result pages |
 | T10 / #18 | Luna implementation in a separate managed worktree; concurrency/recovery review pending |
 | T11 / #19 | Research orchestration remains pending |
@@ -82,5 +82,5 @@ inspecting holdout results; do not tune against the holdout. The corpus digest i
 `13b7ccf965043c8dec05f7189b057308c996de9bd01171fb25dfd141bf517c26`.
 
 No temporary helper scripts were created. Test-created databases/directories are
-cleaned by their fixtures. The T10 managed worktree remains active until integration;
-remove task-created dependency symlinks and archive it after verification.
+cleaned by their fixtures. The T10 and T12 managed worktrees remain active until
+integration; remove task-created dependency symlinks and archive both after verification.
