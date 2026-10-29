@@ -20,14 +20,14 @@ is distinct from an integrated release; partial tasks remain open on GitHub.
 | T07 / #15 | Published `d043c1e`: DNS-pinned static public-original retrieval and normalization |
 | T08 / #16 | Published `57cd579`: Verified candidate mapping, exact provenance, source grouping and uncertainty |
 | T18 / #26 | Published `f191dfb`: mandatory owner HTTP policy, auth/rotation/revocation, Host/Origin/proxy/rate/body checks |
-| T13 / #21 | Published with this checkpoint: HTTP/stdio MCP entrypoint and official SDK checks against the actual runtime with mocked providers |
+| T13 / #21 | Published `89d8714`: HTTP/stdio MCP entrypoint and official SDK checks against the actual runtime with mocked providers |
 | T15 / #23 | Partially published `310ec19`: frozen 18-fixture corpus (digest below); real-path evaluation runner remains pending under #23 |
 | T09 / #17 | Published `bdb7430`: verified claim assessments and bounded JSON/Markdown result pages |
 | T10 / #18 | Published `9d0450b`: durable coordination, fenced recovery, bounded cancellation and conservative usage accounting |
 | T11 / #19 | Published `9fdee9a`: shared application/runtime, bounded collection, verified classification and explicit coverage |
 | T12 / #20 | Published `57123c6`: stdin JSON CLI and process entrypoint; 33 CLI regressions, including actual runtime workflow |
 | T19 / #27, T14 / #22, T16 / #24 | Packaging, cross-interface integration, release docs/checks pending |
-| T17 / #25 | Separately scoped human pilot; participants and explicit data/spend scope still required |
+| T17 / #25 | [Pilot protocol prepared](hypothesis-research-pilot-protocol.md); consenting participants and explicit data/spend scope still required |
 
 ## Verification
 
@@ -97,5 +97,5 @@ inspecting holdout results; do not tune against the holdout. The corpus digest i
 
 No temporary helper scripts were created. Test-created databases/directories are
 cleaned by their fixtures. T10, T11, and T12 are archived and checkout removal verified.
-T13 is integrated and ready for archival after publication. The T15 worktree
+T13 is archived and checkout removal verified. The T15 worktree
 remains active until integration; remove its dependency symlink and archive it after verification.
