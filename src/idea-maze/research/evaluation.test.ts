@@ -8,8 +8,135 @@ import {
   validateEvaluationFixtures,
 } from "./evaluation/index.js";
 import type { EvaluationCase } from "./evaluation/types.js";
+import {
+  calculateRuntimePercentiles,
+  computeEvaluationFreezeSha256,
+  runHypothesisResearchEvaluation,
+} from "./evaluation/runner.js";
 
 describe("hypothesis research evaluation fixtures", () => {
+  it("runs a tuning fixture through the real application path with offline provider doubles", async () => {
+    const report = await runHypothesisResearchEvaluation({ cases: [tuningCases[0]!] });
+    const row = report.cases[0]!;
+
+    expect(report.split).toBe("tuning");
+    expect(report.rowsAreEngineUsefulnessEvidence).toBe(false);
+    expect(report.expectedBehaviorSha256).toBe(evaluationManifest.expectedBehaviorSha256);
+    expect(row.executionScope).toBe("real_application_mocked_provider_regression");
+    expect(row.observed.terminalStatus).toBe("completed");
+    expect(row.observed.outcome).toBe("supported");
+    expect(row.evidenceProvenance.emittedVerifiedLinkCount).toBe(1);
+    expect(row.evidenceProvenance.invalidLinkCount).toBe(0);
+    expect(row.comparisons.expectedCitationIdsMatched).toEqual(["t01-e1"]);
+    expect(row.unsupportedConclusions).toMatchObject({
+      automated: false,
+      manualReviewRequired: true,
+      reviewedConclusionCount: null,
+      unsupportedConclusionCount: null,
+    });
+    expect(row.observed.usage).toMatchObject({
+      modelInputTokens: null,
+      modelOutputTokens: null,
+      providerCostMicros: null,
+    });
+    expect(report.aggregates.outcomeAgreement).toMatchObject({ numerator: 1, denominator: 1 });
+    expect(row.manualReview).toMatchObject({
+      reviewRequired: true,
+      assessmentSummary: expect.any(String),
+      assessmentRationale: expect.any(String),
+      claims: [expect.objectContaining({ rationale: expect.any(String) })],
+    });
+    expect(report.aggregates.runtimeByTerminalStatus).toEqual([
+      expect.objectContaining({
+        terminalStatus: "completed",
+        caseCount: 1,
+        runtimeAvailableCaseIds: [row.caseId],
+        noRuntimeCaseIds: [],
+        medianMilliseconds: expect.any(Number),
+        p95Milliseconds: expect.any(Number),
+      }),
+    ]);
+  });
+
+  it("counts an expected citation only when the assessment cites the emitted verified link", async () => {
+    const contextOnly = {
+      ...tuningCases[0]!,
+      hypothesis: "A hypothesis about an unrelated lunar shipping workflow",
+    } as EvaluationCase;
+    const report = await runHypothesisResearchEvaluation({ cases: [contextOnly] });
+    const row = report.cases[0]!;
+
+    expect(row.observed.verifiedEvidenceCount).toBe(1);
+    expect(row.observed.assessmentCitationIds).toEqual([]);
+    expect(row.evidenceProvenance.uncitedVerifiedEvidence).toMatchObject([
+      { relationship: "context", reason: "context_not_in_assessment_claim_citations" },
+    ]);
+    expect(row.comparisons.expectedCitationIdsMatched).toEqual([]);
+    expect(row.comparisons.expectedEvidenceIdsEmitted).toEqual([]);
+    expect(report.aggregates.expectedCitationRecall).toMatchObject({ numerator: 0, denominator: 1 });
+    expect(report.aggregates.uncitedVerifiedEvidence).toMatchObject({ numerator: 1, denominator: 1 });
+    expect(row.observed.usage).toMatchObject({
+      modelInputTokens: null,
+      modelOutputTokens: null,
+      providerCostMicros: null,
+    });
+  });
+
+  it("requires the exact reviewed freeze fingerprint before loading holdout cases", async () => {
+    await expect(runHypothesisResearchEvaluation({ split: "holdout" }))
+      .rejects.toThrow(/requires --freeze-sha256/u);
+    await expect(runHypothesisResearchEvaluation({ split: "holdout", reviewedFreezeSha256: "0".repeat(64) }))
+      .rejects.toThrow(/requires --freeze-sha256/u);
+    expect(computeEvaluationFreezeSha256()).toMatch(/^[a-f0-9]{64}$/u);
+  });
+
+  it("uses midpoint median and nearest-rank p95, preserving unavailable runtime as null", () => {
+    expect(calculateRuntimePercentiles([])).toEqual({ medianMilliseconds: null, p95Milliseconds: null });
+    expect(calculateRuntimePercentiles([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]))
+      .toEqual({ medianMilliseconds: 10.5, p95Milliseconds: 19 });
+  });
+
+  it("reports null runtime percentiles for cases that never start a run", async () => {
+    const notStarted = {
+      ...tuningCases[3]!,
+      caseId: "tuning-test-unaccepted-suggestion",
+      hypothesisKind: "unaccepted_suggestion",
+      suggestionId: "suggestion-test-unaccepted",
+      expected: {
+        ...tuningCases[3]!.expected,
+        outcome: null,
+        terminalStatus: "not_started",
+        stoppingReason: null,
+        expectedCitedEvidenceIds: [],
+        knownCounterEvidenceSourceIds: [],
+        requiredCoverageGapReasons: [],
+        expectedIndependentSupportGroups: [],
+        expectedHypothesisOrigin: null,
+        expectedSuggestionDisposition: "remains_unaccepted",
+      },
+    } as EvaluationCase;
+    const report = await runHypothesisResearchEvaluation({ cases: [notStarted] });
+
+    expect(report.cases[0]?.observed.terminalStatus).toBe("not_started");
+    expect(report.aggregates.runtimeByTerminalStatus).toEqual([
+      {
+        terminalStatus: "not_started",
+        caseCount: 1,
+        runtimeAvailableCaseIds: [],
+        noRuntimeCaseIds: [notStarted.caseId],
+        medianMilliseconds: null,
+        p95Milliseconds: null,
+        percentileMethod: "median_midpoint_average_p95_nearest_rank",
+      },
+    ]);
+    expect(report.aggregates.usage.elapsedMilliseconds).toMatchObject({
+      totalReported: null,
+      reportingRuns: 0,
+      unreportedRuns: 0,
+      notApplicableCases: 1,
+    });
+  });
+
   it("keeps the reviewed corpus split, manifest IDs, versions, and digest stable", () => {
     expect(tuningCases).toHaveLength(8);
     expect(holdoutCases).toHaveLength(10);

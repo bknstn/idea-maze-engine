@@ -1,0 +1,1452 @@
+{
+  "reportVersion": "1.1.0",
+  "runDate": "2026-10-29T13:04:18.730Z",
+  "split": "tuning",
+  "caseSetId": "idea-maze-hypothesis-research-usefulness",
+  "caseSetVersion": "1.0.0",
+  "expectedBehaviorSha256": "13b7ccf965043c8dec05f7189b057308c996de9bd01171fb25dfd141bf517c26",
+  "rubricVersion": "1.0.0",
+  "policyVersion": "1.1.0",
+  "policySha256": "4842a94d53932694a1531232503b19cea8f1f0046e929025c113c98c99fc6914",
+  "runnerSha256": "f2f400c6dc9353764d2cae9e75061814a4c2c8315b3c70b2f723c91bda117882",
+  "evaluatorRevision": "sha256:f2f400c6dc9353764d2cae9e75061814a4c2c8315b3c70b2f723c91bda117882",
+  "freezeSha256": "220a9bea86bce0d87ba1196e4d948d2c060650a681d1352e8b47663c581a1106",
+  "engineRevision": "9fdee9a816ed828153bc1d9a490a30a64c902a9f",
+  "rowsAreEngineUsefulnessEvidence": false,
+  "scopeStatement": "Synthetic offline policy/provenance regression through the real application and assessment path with mocked search, original-source, and model providers. The mocked model also supplies the fixture hypothesis as a suggestion in suggestion scenarios. These rows do not measure model interpretation or suggestion accuracy, market demand, or product usefulness.",
+  "fullSplitIncluded": true,
+  "cases": [
+    {
+      "caseId": "t01-support-direct",
+      "split": "tuning",
+      "categories": [
+        "support"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_1058a7cf-ac96-431e-83a9-3de6a6bf2700",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "expectedCitedEvidenceIds": [
+          "t01-e1"
+        ],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "verifiedEvidenceCount": 1,
+        "searchSnippetCount": 2,
+        "verifiedEvidenceIds": [
+          "evidence_b82abe259f14c1346cf7a62a404c6e23242c6b13"
+        ],
+        "searchSnippetIds": [
+          "research_snippet_89e5bfe6-dae7-42b3-a9b9-83a23196ee10",
+          "research_snippet_a8f3c380-148b-4551-80e2-23f97ffe1004"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_89e5bfe6-dae7-42b3-a9b9-83a23196ee10",
+            "fixtureSourceId": "t01-note",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_a8f3c380-148b-4551-80e2-23f97ffe1004",
+            "fixtureSourceId": "t01-note",
+            "fixtureSnippetId": null
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_08da0778-754f-44d8-8149-47b9a89e5b01",
+        "emittedEvidenceHypothesisIdsMatchCase": true,
+        "assessmentCitationIds": [
+          "evidence_b82abe259f14c1346cf7a62a404c6e23242c6b13"
+        ],
+        "elapsedMilliseconds": 34,
+        "usage": {
+          "elapsedMilliseconds": 34,
+          "fetchedPages": 1,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": true,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [
+          "t01-e1"
+        ],
+        "expectedCitationCount": 1,
+        "matchedExpectedCitationCount": 1,
+        "expectedEvidenceIdsEmitted": [
+          "t01-e1"
+        ],
+        "matchedExpectedEvidenceEmissionCount": 1,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 0
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 1,
+        "invalidRate": 0,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "Verified excerpts are interpreted as supporting one or more active claims; this does not establish broader prevalence. See each claim's evidence ID lists.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. The complete run set contains 1 recomputed source group; confirmed independent authorship is unavailable. Search snippets were treated as discovery leads only and were excluded from claim outcomes. No collection coverage gaps were recorded for this run. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_08da0778-754f-44d8-8149-47b9a89e5b01",
+            "missingEvidence": [
+              "Verified counterexamples or boundary conditions that could challenge this claim.",
+              "Information that establishes whether source groups represent distinct authors, if independent corroboration matters."
+            ],
+            "outcome": "supported",
+            "rationale": "Claim: “Tool-library volunteers spend time coordinating overdue returns.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (1 link; 1 recomputed source group). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": [
+              "evidence_b82abe259f14c1346cf7a62a404c6e23242c6b13"
+            ]
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 0,
+        "expectedInScopeGroupIds": [],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 1,
+        "expectedSupportGroupIds": [
+          "t01-note"
+        ],
+        "observedSupportGroupCount": 1,
+        "observedSupportGroupIds": [
+          "independence:4be2acd44208661a1cb20eea"
+        ],
+        "supportGroupCountMatches": true,
+        "observedGroupsHaveUncertainAuthorship": true,
+        "fixtureMapping": "canonical_url_and_original_hash"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t02-opposition-direct",
+      "split": "tuning",
+      "categories": [
+        "opposition"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_3d372115-329d-4b03-83d7-e3ad76e7b7fc",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "contradicted",
+        "coverageGapReasons": [],
+        "expectedCitedEvidenceIds": [
+          "t02-e1"
+        ],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "contradicted",
+        "coverageGapReasons": [],
+        "verifiedEvidenceCount": 1,
+        "searchSnippetCount": 2,
+        "verifiedEvidenceIds": [
+          "evidence_5689dd50bf4b9ef2edccc960a8ea2be63a1dcc1f"
+        ],
+        "searchSnippetIds": [
+          "research_snippet_14da571a-a486-441c-a181-94f52427db21",
+          "research_snippet_23949833-2ed2-4160-a26a-784c8e071b0d"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_14da571a-a486-441c-a181-94f52427db21",
+            "fixtureSourceId": "t02-note",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_23949833-2ed2-4160-a26a-784c8e071b0d",
+            "fixtureSourceId": "t02-note",
+            "fixtureSnippetId": null
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_e7ac905c-60af-47e7-b97a-c9f7da8c7c65",
+        "emittedEvidenceHypothesisIdsMatchCase": true,
+        "assessmentCitationIds": [
+          "evidence_5689dd50bf4b9ef2edccc960a8ea2be63a1dcc1f"
+        ],
+        "elapsedMilliseconds": 15,
+        "usage": {
+          "elapsedMilliseconds": 15,
+          "fetchedPages": 1,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": true,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [
+          "t02-e1"
+        ],
+        "expectedCitationCount": 1,
+        "matchedExpectedCitationCount": 1,
+        "expectedEvidenceIdsEmitted": [
+          "t02-e1"
+        ],
+        "matchedExpectedEvidenceEmissionCount": 1,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 0
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 1,
+        "invalidRate": 0,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "Verified excerpts are interpreted as challenging the active claims; this does not establish that the claims are false in every context. See each claim's evidence ID lists.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. The complete run set contains 1 recomputed source group; confirmed independent authorship is unavailable. Search snippets were treated as discovery leads only and were excluded from claim outcomes. No collection coverage gaps were recorded for this run. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [
+              "evidence_5689dd50bf4b9ef2edccc960a8ea2be63a1dcc1f"
+            ],
+            "hypothesisId": "research_hypothesis_e7ac905c-60af-47e7-b97a-c9f7da8c7c65",
+            "missingEvidence": [
+              "Verified original-source evidence that directly supports this claim.",
+              "Information that establishes whether source groups represent distinct authors, if independent corroboration matters."
+            ],
+            "outcome": "contradicted",
+            "rationale": "Claim: “Garden coordinators currently track plot visits in a shared spreadsheet.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (0 links; 0 recomputed source groups). Challenging verified evidence IDs are listed in challengingEvidenceIds (1 link; 1 recomputed source group). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": []
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 1,
+        "expectedInScopeGroupIds": [
+          "t02-note"
+        ],
+        "observedChallengingGroupCount": 1,
+        "observedChallengingGroupIds": [
+          "t02-note"
+        ],
+        "missedInScopeGroupIds": [],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 0,
+        "expectedSupportGroupIds": [],
+        "observedSupportGroupCount": 0,
+        "observedSupportGroupIds": [],
+        "supportGroupCountMatches": null,
+        "observedGroupsHaveUncertainAuthorship": null,
+        "fixtureMapping": "canonical_url_and_original_hash"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t03-mixed-evidence",
+      "split": "tuning",
+      "categories": [
+        "support",
+        "opposition",
+        "mixed"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_9239782b-e7f7-481e-9f32-61fb0586c11d",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "mixed",
+        "coverageGapReasons": [],
+        "expectedCitedEvidenceIds": [
+          "t03-e1",
+          "t03-e2"
+        ],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "verifiedEvidenceCount": 2,
+        "searchSnippetCount": 4,
+        "verifiedEvidenceIds": [
+          "evidence_0aec30e0019985fee6941ae1c3619bad918db7e9",
+          "evidence_2470fac87e2dc271208b80f165f07b39892da90a"
+        ],
+        "searchSnippetIds": [
+          "research_snippet_78519aba-a205-4adb-9959-7566cedd12ed",
+          "research_snippet_c8eb1dbf-cd2f-442d-8108-d378dfc8309a",
+          "research_snippet_cd216818-e1fb-4869-9225-965051d5bb82",
+          "research_snippet_d6be090e-25a4-4d0c-91f8-92869327f60a"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_78519aba-a205-4adb-9959-7566cedd12ed",
+            "fixtureSourceId": "t03-challenge",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_c8eb1dbf-cd2f-442d-8108-d378dfc8309a",
+            "fixtureSourceId": "t03-challenge",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_cd216818-e1fb-4869-9225-965051d5bb82",
+            "fixtureSourceId": "t03-support",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_d6be090e-25a4-4d0c-91f8-92869327f60a",
+            "fixtureSourceId": "t03-support",
+            "fixtureSnippetId": null
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_23099fb3-2b1d-4018-aa7d-d2d683ece0b5",
+        "emittedEvidenceHypothesisIdsMatchCase": true,
+        "assessmentCitationIds": [
+          "evidence_0aec30e0019985fee6941ae1c3619bad918db7e9",
+          "evidence_2470fac87e2dc271208b80f165f07b39892da90a"
+        ],
+        "elapsedMilliseconds": 26,
+        "usage": {
+          "elapsedMilliseconds": 26,
+          "fetchedPages": 2,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": false,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [
+          "t03-e1"
+        ],
+        "expectedCitationCount": 2,
+        "matchedExpectedCitationCount": 1,
+        "expectedEvidenceIdsEmitted": [
+          "t03-e1"
+        ],
+        "matchedExpectedEvidenceEmissionCount": 1,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 1
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 2,
+        "invalidRate": 0,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "Verified excerpts are interpreted as supporting one or more active claims; this does not establish broader prevalence. See each claim's evidence ID lists.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. The complete run set contains 2 recomputed source groups; confirmed independent authorship is unavailable. Search snippets were treated as discovery leads only and were excluded from claim outcomes. No collection coverage gaps were recorded for this run. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_23099fb3-2b1d-4018-aa7d-d2d683ece0b5",
+            "missingEvidence": [
+              "Verified counterexamples or boundary conditions that could challenge this claim.",
+              "Information that establishes whether source groups represent distinct authors, if independent corroboration matters."
+            ],
+            "outcome": "supported",
+            "rationale": "Claim: “Volunteer organizers often struggle to fill repair-event shifts.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (2 links; 2 recomputed source groups). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": [
+              "evidence_0aec30e0019985fee6941ae1c3619bad918db7e9",
+              "evidence_2470fac87e2dc271208b80f165f07b39892da90a"
+            ]
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 1,
+        "expectedInScopeGroupIds": [
+          "t03-challenge"
+        ],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [
+          "t03-challenge"
+        ],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 1,
+        "expectedSupportGroupIds": [
+          "t03-support"
+        ],
+        "observedSupportGroupCount": 2,
+        "observedSupportGroupIds": [
+          "independence:4be2acd44208661a1cb20eea",
+          "independence:5e8ee92e8be3f1dc87e83b1a"
+        ],
+        "supportGroupCountMatches": false,
+        "observedGroupsHaveUncertainAuthorship": true,
+        "fixtureMapping": "canonical_url_and_original_hash"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t04-no-results",
+      "split": "tuning",
+      "categories": [
+        "no_evidence"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_373a2cd3-91ef-4556-84a2-49c2539d4400",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "insufficient_evidence",
+        "coverageGapReasons": [
+          "no_results"
+        ],
+        "expectedCitedEvidenceIds": [],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "insufficient_evidence",
+        "coverageGapReasons": [
+          "no_results"
+        ],
+        "verifiedEvidenceCount": 0,
+        "searchSnippetCount": 0,
+        "verifiedEvidenceIds": [],
+        "searchSnippetIds": [],
+        "searchSnippetMappings": [],
+        "activeHypothesisRuntimeId": "research_hypothesis_7ed59930-5f7c-4f4b-a020-c52ff847eb5e",
+        "emittedEvidenceHypothesisIdsMatchCase": null,
+        "assessmentCitationIds": [],
+        "elapsedMilliseconds": 12,
+        "usage": {
+          "elapsedMilliseconds": 12,
+          "fetchedPages": 0,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": true,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [],
+        "expectedCitationCount": 0,
+        "matchedExpectedCitationCount": 0,
+        "expectedEvidenceIdsEmitted": [],
+        "matchedExpectedEvidenceEmissionCount": 0,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 0
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 0,
+        "invalidRate": null,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "No verified excerpt directly supports or challenges an active claim. This result is limited and is not evidence that the problem is absent.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. No verified original excerpts were available to assess. Search snippets, if present, were excluded from claim outcomes. No search snippets were used as claim evidence. Recorded coverage gaps: no_results. These describe what collection could not establish; they are not evidence for or against a claim. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_7ed59930-5f7c-4f4b-a020-c52ff847eb5e",
+            "missingEvidence": [
+              "Verified original-source evidence that directly supports this claim.",
+              "Verified counterexamples or boundary conditions that could challenge this claim."
+            ],
+            "outcome": "insufficient_evidence",
+            "rationale": "Claim: “Seed-library volunteers have trouble finding a substitute for a shift.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (0 links; 0 recomputed source groups). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": []
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 0,
+        "expectedInScopeGroupIds": [],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 0,
+        "expectedSupportGroupIds": [],
+        "observedSupportGroupCount": 0,
+        "observedSupportGroupIds": [],
+        "supportGroupCountMatches": null,
+        "observedGroupsHaveUncertainAuthorship": null,
+        "fixtureMapping": "not_applicable"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t05-inaccessible-original",
+      "split": "tuning",
+      "categories": [
+        "inaccessible_original"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_176a75a8-693b-4a4f-8209-fa1e7b0955f9",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "insufficient_evidence",
+        "coverageGapReasons": [
+          "original_unavailable"
+        ],
+        "expectedCitedEvidenceIds": [],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "insufficient_evidence",
+        "coverageGapReasons": [
+          "original_unavailable"
+        ],
+        "verifiedEvidenceCount": 0,
+        "searchSnippetCount": 2,
+        "verifiedEvidenceIds": [],
+        "searchSnippetIds": [
+          "research_snippet_a4a77cce-7771-43b2-932f-f0361034589c",
+          "research_snippet_b8eb282a-3908-4368-822b-eedd819d4e6e"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_a4a77cce-7771-43b2-932f-f0361034589c",
+            "fixtureSourceId": "t05-post",
+            "fixtureSnippetId": "t05-snippet"
+          },
+          {
+            "runtimeSnippetId": "research_snippet_b8eb282a-3908-4368-822b-eedd819d4e6e",
+            "fixtureSourceId": "t05-post",
+            "fixtureSnippetId": "t05-snippet"
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_4bee6de8-9313-4800-b688-0bb53d015d4e",
+        "emittedEvidenceHypothesisIdsMatchCase": null,
+        "assessmentCitationIds": [],
+        "elapsedMilliseconds": 12,
+        "usage": {
+          "elapsedMilliseconds": 12,
+          "fetchedPages": 1,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": true,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [],
+        "expectedCitationCount": 0,
+        "matchedExpectedCitationCount": 0,
+        "expectedEvidenceIdsEmitted": [],
+        "matchedExpectedEvidenceEmissionCount": 0,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 0
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 0,
+        "invalidRate": null,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "No verified excerpt directly supports or challenges an active claim. This result is limited and is not evidence that the problem is absent.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. No verified original excerpts were available to assess. Search snippets, if present, were excluded from claim outcomes. Search snippets were treated as discovery leads only and were excluded from claim outcomes. Recorded coverage gaps: original_unavailable. These describe what collection could not establish; they are not evidence for or against a claim. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_4bee6de8-9313-4800-b688-0bb53d015d4e",
+            "missingEvidence": [
+              "Verified original-source evidence that directly supports this claim.",
+              "Verified counterexamples or boundary conditions that could challenge this claim."
+            ],
+            "outcome": "insufficient_evidence",
+            "rationale": "Claim: “Studio members lose track of which shelf holds shared glaze supplies.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (0 links; 0 recomputed source groups). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": []
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 0,
+        "expectedInScopeGroupIds": [],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 0,
+        "expectedSupportGroupIds": [],
+        "observedSupportGroupCount": 0,
+        "observedSupportGroupIds": [],
+        "supportGroupCountMatches": null,
+        "observedGroupsHaveUncertainAuthorship": null,
+        "fixtureMapping": "not_applicable"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t06-explicit-suggestion-promotion",
+      "split": "tuning",
+      "categories": [
+        "suggestion_promotion",
+        "support"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_ce76426e-19c3-4ae9-82bb-d5bae077dbcd",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "expectedCitedEvidenceIds": [
+          "t06-e1"
+        ],
+        "hypothesisOrigin": "model_suggested",
+        "suggestionDisposition": "active_with_provenance"
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "verifiedEvidenceCount": 1,
+        "searchSnippetCount": 2,
+        "verifiedEvidenceIds": [
+          "evidence_7234683fe66d15f48858f94090a1ca5cf6ab1109"
+        ],
+        "searchSnippetIds": [
+          "research_snippet_8281c0d3-6a21-4f25-b0c3-79dde8ab6747",
+          "research_snippet_d5779bc2-f24a-40f0-aeb6-3907843bdbe2"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_8281c0d3-6a21-4f25-b0c3-79dde8ab6747",
+            "fixtureSourceId": "t06-note",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_d5779bc2-f24a-40f0-aeb6-3907843bdbe2",
+            "fixtureSourceId": "t06-note",
+            "fixtureSnippetId": null
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_5792b145-a2be-4fa1-9c5f-248942d20b30",
+        "emittedEvidenceHypothesisIdsMatchCase": true,
+        "assessmentCitationIds": [
+          "evidence_7234683fe66d15f48858f94090a1ca5cf6ab1109"
+        ],
+        "elapsedMilliseconds": 15,
+        "usage": {
+          "elapsedMilliseconds": 15,
+          "fetchedPages": 1,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "model_suggested",
+        "sourceSuggestionIdPreserved": true,
+        "suggestionDisposition": "active_with_provenance",
+        "modelSuggestionsReturned": 1,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": true,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [
+          "t06-e1"
+        ],
+        "expectedCitationCount": 1,
+        "matchedExpectedCitationCount": 1,
+        "expectedEvidenceIdsEmitted": [
+          "t06-e1"
+        ],
+        "matchedExpectedEvidenceEmissionCount": 1,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 0
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 1,
+        "invalidRate": 0,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "Verified excerpts are interpreted as supporting one or more active claims; this does not establish broader prevalence. See each claim's evidence ID lists.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. The complete run set contains 1 recomputed source group; confirmed independent authorship is unavailable. Search snippets were treated as discovery leads only and were excluded from claim outcomes. No collection coverage gaps were recorded for this run. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_5792b145-a2be-4fa1-9c5f-248942d20b30",
+            "missingEvidence": [
+              "Verified counterexamples or boundary conditions that could challenge this claim.",
+              "Information that establishes whether source groups represent distinct authors, if independent corroboration matters."
+            ],
+            "outcome": "supported",
+            "rationale": "Claim: “Fridge volunteers repeat food-safety checks because handoff notes are missing.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (1 link; 1 recomputed source group). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": [
+              "evidence_7234683fe66d15f48858f94090a1ca5cf6ab1109"
+            ]
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 0,
+        "expectedInScopeGroupIds": [],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 1,
+        "expectedSupportGroupIds": [
+          "t06-note"
+        ],
+        "observedSupportGroupCount": 1,
+        "observedSupportGroupIds": [
+          "independence:4be2acd44208661a1cb20eea"
+        ],
+        "supportGroupCountMatches": true,
+        "observedGroupsHaveUncertainAuthorship": true,
+        "fixtureMapping": "canonical_url_and_original_hash"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t07-duplicate-pages",
+      "split": "tuning",
+      "categories": [
+        "duplicates",
+        "support"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_8aadfa18-81c6-4402-83a8-c7776f2fd973",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "expectedCitedEvidenceIds": [
+          "t07-e1"
+        ],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "verifiedEvidenceCount": 3,
+        "searchSnippetCount": 6,
+        "verifiedEvidenceIds": [
+          "evidence_09037c97c9a1433ee25412c74a98e6456f3ccfb3",
+          "evidence_1b8aba4704aad9a1bfce2d1f32083f1f8072448e",
+          "evidence_e85464f30c8560e1dc42b4014ad6e8beedcf3d7e"
+        ],
+        "searchSnippetIds": [
+          "research_snippet_05710fac-4e87-46b2-bc30-1c61e16d94b9",
+          "research_snippet_256778d7-a9b5-48b3-b960-58140c73bb8e",
+          "research_snippet_49f35d8e-a8e4-4c9b-93fe-fd5a3528a245",
+          "research_snippet_7444f2c0-7b37-444a-a9ee-5160bfd0e27a",
+          "research_snippet_bd618650-b8e9-44ae-994d-e4005d07ab93",
+          "research_snippet_c5bc62cf-8819-446d-afc6-10b3fc3cf8ab"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_05710fac-4e87-46b2-bc30-1c61e16d94b9",
+            "fixtureSourceId": "t07-copy-b",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_256778d7-a9b5-48b3-b960-58140c73bb8e",
+            "fixtureSourceId": "t07-copy-a",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_49f35d8e-a8e4-4c9b-93fe-fd5a3528a245",
+            "fixtureSourceId": "t07-copy-a",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_7444f2c0-7b37-444a-a9ee-5160bfd0e27a",
+            "fixtureSourceId": "t07-copy-b",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_bd618650-b8e9-44ae-994d-e4005d07ab93",
+            "fixtureSourceId": "t07-original",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_c5bc62cf-8819-446d-afc6-10b3fc3cf8ab",
+            "fixtureSourceId": "t07-original",
+            "fixtureSnippetId": null
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_2685add9-6f67-469e-a235-cec418aacf12",
+        "emittedEvidenceHypothesisIdsMatchCase": true,
+        "assessmentCitationIds": [
+          "evidence_09037c97c9a1433ee25412c74a98e6456f3ccfb3",
+          "evidence_1b8aba4704aad9a1bfce2d1f32083f1f8072448e",
+          "evidence_e85464f30c8560e1dc42b4014ad6e8beedcf3d7e"
+        ],
+        "elapsedMilliseconds": 22,
+        "usage": {
+          "elapsedMilliseconds": 22,
+          "fetchedPages": 3,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": true,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [
+          "t07-e1"
+        ],
+        "expectedCitationCount": 1,
+        "matchedExpectedCitationCount": 1,
+        "expectedEvidenceIdsEmitted": [
+          "t07-e1"
+        ],
+        "matchedExpectedEvidenceEmissionCount": 1,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 2
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 3,
+        "invalidRate": 0,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "Verified excerpts are interpreted as supporting one or more active claims; this does not establish broader prevalence. See each claim's evidence ID lists.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. The complete run set contains 1 recomputed source group; confirmed independent authorship is unavailable. Search snippets were treated as discovery leads only and were excluded from claim outcomes. No collection coverage gaps were recorded for this run. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_2685add9-6f67-469e-a235-cec418aacf12",
+            "missingEvidence": [
+              "Verified counterexamples or boundary conditions that could challenge this claim.",
+              "Information that establishes whether source groups represent distinct authors, if independent corroboration matters."
+            ],
+            "outcome": "supported",
+            "rationale": "Claim: “Makerspace members spend time asking staff about misplaced safety glasses.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (3 links; 1 recomputed source group). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": [
+              "evidence_09037c97c9a1433ee25412c74a98e6456f3ccfb3",
+              "evidence_1b8aba4704aad9a1bfce2d1f32083f1f8072448e",
+              "evidence_e85464f30c8560e1dc42b4014ad6e8beedcf3d7e"
+            ]
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 0,
+        "expectedInScopeGroupIds": [],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 1,
+        "expectedSupportGroupIds": [
+          "t07-post"
+        ],
+        "observedSupportGroupCount": 1,
+        "observedSupportGroupIds": [
+          "independence:981f2f525fa7ca11ecb7a57a"
+        ],
+        "supportGroupCountMatches": true,
+        "observedGroupsHaveUncertainAuthorship": true,
+        "fixtureMapping": "canonical_url_and_original_hash"
+      },
+      "harnessFailure": null
+    },
+    {
+      "caseId": "t08-fabricated-quotation",
+      "split": "tuning",
+      "categories": [
+        "fabricated_quote",
+        "opposition"
+      ],
+      "executionScope": "real_application_mocked_provider_regression",
+      "runId": "research_run_0857c67c-a583-4f2a-a81d-aac372bfc217",
+      "expected": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "contradicted",
+        "coverageGapReasons": [],
+        "expectedCitedEvidenceIds": [
+          "t08-e1"
+        ],
+        "hypothesisOrigin": "user_supplied",
+        "suggestionDisposition": null
+      },
+      "observed": {
+        "terminalStatus": "completed",
+        "stoppingReason": "all_steps_finished",
+        "outcome": "supported",
+        "coverageGapReasons": [],
+        "verifiedEvidenceCount": 1,
+        "searchSnippetCount": 2,
+        "verifiedEvidenceIds": [
+          "evidence_431cff823697d6447fa2f643251b7734bc71c47f"
+        ],
+        "searchSnippetIds": [
+          "research_snippet_a9dbab3c-0a27-4ce6-a086-970d03bdd46f",
+          "research_snippet_e25dcdbd-7093-438a-bc3e-08e8d880d74d"
+        ],
+        "searchSnippetMappings": [
+          {
+            "runtimeSnippetId": "research_snippet_a9dbab3c-0a27-4ce6-a086-970d03bdd46f",
+            "fixtureSourceId": "t08-log",
+            "fixtureSnippetId": null
+          },
+          {
+            "runtimeSnippetId": "research_snippet_e25dcdbd-7093-438a-bc3e-08e8d880d74d",
+            "fixtureSourceId": "t08-log",
+            "fixtureSnippetId": null
+          }
+        ],
+        "activeHypothesisRuntimeId": "research_hypothesis_347f49eb-5db7-45bf-95fd-55e7dfc0c299",
+        "emittedEvidenceHypothesisIdsMatchCase": true,
+        "assessmentCitationIds": [
+          "evidence_431cff823697d6447fa2f643251b7734bc71c47f"
+        ],
+        "elapsedMilliseconds": 15,
+        "usage": {
+          "elapsedMilliseconds": 15,
+          "fetchedPages": 1,
+          "modelInputTokens": null,
+          "modelOutputTokens": null,
+          "providerCostMicros": null,
+          "searchRequests": 2
+        },
+        "activeHypothesisOrigin": "user_supplied",
+        "sourceSuggestionIdPreserved": null,
+        "suggestionDisposition": null,
+        "modelSuggestionsReturned": 0,
+        "runStarted": true
+      },
+      "comparisons": {
+        "terminalStatusMatches": true,
+        "stoppingReasonMatches": true,
+        "assessmentExpectationMatches": true,
+        "outcomeMatches": false,
+        "coverageReasonSetMatches": true,
+        "hypothesisOriginMatches": true,
+        "suggestionDispositionMatches": true,
+        "expectedCitationIdsMatched": [],
+        "expectedCitationCount": 1,
+        "matchedExpectedCitationCount": 0,
+        "expectedEvidenceIdsEmitted": [],
+        "matchedExpectedEvidenceEmissionCount": 0,
+        "uncitedExpectedEvidenceIds": [],
+        "unexpectedVerifiedEvidenceCount": 1
+      },
+      "evidenceProvenance": {
+        "invalidLinkCount": 0,
+        "emittedVerifiedLinkCount": 1,
+        "invalidRate": 0,
+        "errors": [],
+        "snippetCitationCount": 0,
+        "danglingCitationCount": 0,
+        "forbiddenSourceCitationIds": [],
+        "unmappedSourceCount": 0,
+        "uncitedVerifiedEvidence": []
+      },
+      "manualReview": {
+        "reviewRequired": true,
+        "assessmentSummary": "Verified excerpts are interpreted as supporting one or more active claims; this does not establish broader prevalence. See each claim's evidence ID lists.",
+        "assessmentRationale": "Outcomes summarize the recorded relationship interpretations for verified excerpts; provenance establishes quotation grounding, not whether an interpretation is true or broadly representative. The complete run set contains 1 recomputed source group; confirmed independent authorship is unavailable. Search snippets were treated as discovery leads only and were excluded from claim outcomes. No collection coverage gaps were recorded for this run. No current alternatives were supplied; ask participants what they use or do today. An unknown alternative set is not evidence that no alternatives exist.",
+        "nextExperiment": "Run structured interviews with five people matching “People described by this synthetic workflow case” and ask for a recent concrete instance, current workaround, and observable time or error impact. Ask each person what they use or do today before showing a low-fidelity version of the proposed solution. Record what would count as a disconfirming result before the interviews begin.",
+        "claims": [
+          {
+            "challengingEvidenceIds": [],
+            "hypothesisId": "research_hypothesis_347f49eb-5db7-45bf-95fd-55e7dfc0c299",
+            "missingEvidence": [
+              "Verified counterexamples or boundary conditions that could challenge this claim.",
+              "Information that establishes whether source groups represent distinct authors, if independent corroboration matters."
+            ],
+            "outcome": "supported",
+            "rationale": "Claim: “Club members attend more than twenty observing sessions each month.”. Supporting verified evidence IDs are listed in supportingEvidenceIds (1 link; 1 recomputed source group). Challenging verified evidence IDs are listed in challengingEvidenceIds (0 links; 0 recomputed source groups). Context-only excerpts (0) are visible in paginated evidence and do not affect this claim outcome. Source groups identify likely source dependencies; they do not establish independent authorship.",
+            "supportingEvidenceIds": [
+              "evidence_431cff823697d6447fa2f643251b7734bc71c47f"
+            ]
+          }
+        ]
+      },
+      "unsupportedConclusions": {
+        "automated": false,
+        "manualReviewRequired": true,
+        "reviewedConclusionCount": null,
+        "unsupportedConclusionCount": null
+      },
+      "counterevidence": {
+        "expectedInScopeGroupCount": 1,
+        "expectedInScopeGroupIds": [
+          "t08-log"
+        ],
+        "observedChallengingGroupCount": 0,
+        "observedChallengingGroupIds": [],
+        "missedInScopeGroupIds": [
+          "t08-log"
+        ],
+        "withheldSourceCount": 0,
+        "withheldGroupCount": 0
+      },
+      "sourceGrouping": {
+        "expectedSupportGroupCount": 0,
+        "expectedSupportGroupIds": [],
+        "observedSupportGroupCount": 1,
+        "observedSupportGroupIds": [
+          "independence:4be2acd44208661a1cb20eea"
+        ],
+        "supportGroupCountMatches": null,
+        "observedGroupsHaveUncertainAuthorship": true,
+        "fixtureMapping": "canonical_url_and_original_hash"
+      },
+      "harnessFailure": null
+    }
+  ],
+  "aggregates": {
+    "terminalStatusAgreement": {
+      "numerator": 8,
+      "denominator": 8,
+      "rate": 1,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t04-no-results",
+        "t05-inaccessible-original",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "stoppingReasonAgreement": {
+      "numerator": 8,
+      "denominator": 8,
+      "rate": 1,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t04-no-results",
+        "t05-inaccessible-original",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "assessmentExpectationAgreement": {
+      "numerator": 8,
+      "denominator": 8,
+      "rate": 1,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t04-no-results",
+        "t05-inaccessible-original",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "outcomeAgreement": {
+      "numerator": 6,
+      "denominator": 8,
+      "rate": 0.75,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t04-no-results",
+        "t05-inaccessible-original",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages"
+      ]
+    },
+    "coverageReasonSetAgreement": {
+      "numerator": 8,
+      "denominator": 8,
+      "rate": 1,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t04-no-results",
+        "t05-inaccessible-original",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "hypothesisOriginAgreement": {
+      "numerator": 8,
+      "denominator": 8,
+      "rate": 1,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t04-no-results",
+        "t05-inaccessible-original",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "suggestionDispositionAgreement": {
+      "numerator": 1,
+      "denominator": 1,
+      "rate": 1,
+      "caseIds": [
+        "t06-explicit-suggestion-promotion"
+      ]
+    },
+    "evidenceProvenanceErrors": {
+      "numerator": 0,
+      "denominator": 9,
+      "rate": 0,
+      "caseIds": []
+    },
+    "expectedCitationRecall": {
+      "numerator": 5,
+      "denominator": 7,
+      "rate": 0.7142857142857143,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages"
+      ]
+    },
+    "expectedEvidenceEmission": {
+      "numerator": 5,
+      "denominator": 7,
+      "rate": 0.7142857142857143,
+      "caseIds": [
+        "t01-support-direct",
+        "t02-opposition-direct",
+        "t03-mixed-evidence",
+        "t06-explicit-suggestion-promotion",
+        "t07-duplicate-pages"
+      ]
+    },
+    "uncitedVerifiedEvidence": {
+      "numerator": 0,
+      "denominator": 9,
+      "rate": 0,
+      "caseIds": []
+    },
+    "unexpectedVerifiedEvidence": {
+      "numerator": 4,
+      "denominator": 9,
+      "rate": 0.4444444444444444,
+      "caseIds": [
+        "t03-mixed-evidence",
+        "t07-duplicate-pages",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "snippetMisuse": {
+      "numerator": 0,
+      "denominator": 9,
+      "rate": 0,
+      "caseIds": []
+    },
+    "missedKnownCounterevidenceGroups": {
+      "numerator": 2,
+      "denominator": 3,
+      "rate": 0.6666666666666666,
+      "caseIds": [
+        "t03-mixed-evidence",
+        "t08-fabricated-quotation"
+      ]
+    },
+    "unsupportedConclusionReview": {
+      "automated": false,
+      "manualReviewRequiredCases": 8,
+      "reviewedConclusions": null,
+      "unsupportedConclusions": null
+    },
+    "coverageByReason": [
+      {
+        "reason": "no_results",
+        "truePositive": 1,
+        "falsePositive": 0,
+        "falseNegative": 0
+      },
+      {
+        "reason": "original_unavailable",
+        "truePositive": 1,
+        "falsePositive": 0,
+        "falseNegative": 0
+      }
+    ],
+    "terminalStatuses": {
+      "completed": 8
+    },
+    "usage": {
+      "searchRequests": {
+        "totalReported": 16,
+        "reportingRuns": 8,
+        "unreportedRuns": 0,
+        "notApplicableCases": 0
+      },
+      "fetchedPages": {
+        "totalReported": 10,
+        "reportingRuns": 8,
+        "unreportedRuns": 0,
+        "notApplicableCases": 0
+      },
+      "modelInputTokens": {
+        "totalReported": null,
+        "reportingRuns": 0,
+        "unreportedRuns": 8,
+        "notApplicableCases": 0
+      },
+      "modelOutputTokens": {
+        "totalReported": null,
+        "reportingRuns": 0,
+        "unreportedRuns": 8,
+        "notApplicableCases": 0
+      },
+      "providerCostMicros": {
+        "totalReported": null,
+        "reportingRuns": 0,
+        "unreportedRuns": 8,
+        "notApplicableCases": 0
+      },
+      "elapsedMilliseconds": {
+        "totalReported": 151,
+        "reportingRuns": 8,
+        "unreportedRuns": 0,
+        "notApplicableCases": 0
+      }
+    },
+    "runtimeByTerminalStatus": [
+      {
+        "terminalStatus": "completed",
+        "caseCount": 8,
+        "runtimeAvailableCaseIds": [
+          "t01-support-direct",
+          "t02-opposition-direct",
+          "t03-mixed-evidence",
+          "t04-no-results",
+          "t05-inaccessible-original",
+          "t06-explicit-suggestion-promotion",
+          "t07-duplicate-pages",
+          "t08-fabricated-quotation"
+        ],
+        "noRuntimeCaseIds": [],
+        "medianMilliseconds": 15,
+        "p95Milliseconds": 34,
+        "percentileMethod": "median_midpoint_average_p95_nearest_rank"
+      }
+    ]
+  }
+}
