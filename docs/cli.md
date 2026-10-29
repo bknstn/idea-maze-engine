@@ -24,6 +24,68 @@ The pipeline records stage failures and continues to later stages. Inspect its
 JSON `ok`, `failedStages`, and stage results when integrating with a scheduler;
 process exit status alone does not describe stage success.
 
+## Case-first hypothesis research CLI
+
+The case-first research CLI uses the shared hypothesis-research application and
+keeps the legacy opportunity command `idea:research` unchanged. Its npm entry is
+`idea:research:cli`, backed by
+`node --import tsx src/idea-maze/scripts/research-cli-main.ts`:
+
+```text
+npm run idea:research:cli -- --help
+npm run --silent idea:research:cli -- <command> [options] < request.json
+```
+
+Send one UTF-8 JSON object on stdin (maximum 256 KiB); idea text and other
+request values are not command-line arguments. Each operation writes one
+schema-versioned JSON envelope to stdout; `--help` prints usage text.
+Use `npm run --silent` for machine-readable output to suppress npm launcher
+headers. Sanitized diagnostics go to stderr. `capabilities` takes no stdin. The
+remaining commands map to the shared application tools:
+
+| Command | Purpose |
+| --- | --- |
+| `capabilities` | Read provider availability and configured limits |
+| `case-create` | Create a case with intake and caller-supplied hypotheses |
+| `case-get` | Read the latest case or a selected revision |
+| `case-update` | Append an intake or hypothesis revision |
+| `plan` | Validate a supplied plan, or create a bounded local plan |
+| `start` | Start a run and wait for its terminal result |
+| `status` | Read a run's execution status |
+| `result` | Read a bounded result page |
+| `cancel` | Request cancellation using an idempotency key |
+
+A synthetic case-create request:
+
+```bash
+printf '%s' '{"idempotencyKey":"demo-case-create-0001","intake":{"ideaSummary":"A sample workflow helper","targetUser":"Independent tutors","problem":"Session notes take time","proposedSolution":"A structured note template"},"hypotheses":[{"claim":"Tutors spend time rewriting session notes"}]}' \
+  | npm run --silent idea:research:cli -- case-create
+```
+
+Use IDs and revisions returned in each envelope for later commands. A plan may
+contain a caller-supplied `suppliedPlan`; otherwise the application generates a
+bounded local plan. Model-generated hypothesis suggestions are opt-in through
+`requestHypothesisSuggestions`. `start` waits up to 15 minutes by default and
+prints the final result page envelope. `--poll-interval-ms` and
+`--wait-timeout-ms` tune that wait.
+Ctrl-C requests durable cancellation for the run and waits briefly for cleanup;
+exit status 130 means the CLI was interrupted, while 124 means its wait deadline
+elapsed. If cleanup cannot confirm a terminal state, stderr reports the last
+observed status. The CLI does not detach a run it owns.
+
+`result` accepts `--format json|markdown`; the stdin object's `limit` and
+`cursor` fields control bounded pagination. Markdown is returned in the result
+envelope, not written to an arbitrary filesystem path. With providers
+unconfigured or without usable original-source evidence, a completed run can
+correctly report `insufficient_evidence` and coverage gaps. `--help` is safe to
+run without opening or initializing a workspace.
+
+Exit statuses are stable: 0 success; 2 validation; 3 not found; 4 conflict; 5
+busy; 6 provider unavailable; 7 limit exceeded; 8 access denied; 9 rate limited;
+64 command usage; 65 stdin input; 70 internal/run failure; 124 wait timeout; and
+130 Ctrl-C interruption. The envelope carries the shared error code and
+validation details.
+
 ## Research and human review
 
 ```text

@@ -119,6 +119,9 @@ Use a slug from `idea:latest` and a research run ID from the opportunity details
 | List published local artifacts | `npm run idea:artifacts -- --json` |
 | List exploration briefs | `npm run idea:explorations -- --json` |
 
+For case-first hypothesis research, run `npm run idea:research:cli -- --help`;
+see the [hypothesis research CLI guide](docs/cli.md#case-first-hypothesis-research-cli).
+
 The angle-bracket values are placeholders. Research drafts are stored in SQLite
 run metadata and can be inspected with `idea:explain`. CLI approval records the
 decision; it does not export a Markdown artifact. Exploration normally requires
