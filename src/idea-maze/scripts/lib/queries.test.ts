@@ -137,6 +137,48 @@ describe('getCounts', () => {
     });
   });
 
+  it('keeps hypothesis-research originals out of the legacy extraction feed', async () => {
+    const { getDb } = await import('./db.ts');
+    const { initSchema } = await import('./schema.ts');
+    const { getUnprocessedItems, upsertSourceItem } = await import('./queries.ts');
+
+    const db = getDb();
+    initSchema(db);
+    const base = {
+      external_id: 'source-v1',
+      text: 'Synthetic page content for a research workflow test.',
+      timestamp_utc: '2026-08-02T10:00:00.000Z',
+      raw_path: '',
+      content_hash: 'synthetic-hash',
+    };
+    upsertSourceItem({
+      ...base,
+      source: 'research_public_web',
+      canonical_url: 'https://example.com/research',
+      channel_or_label: 'hypothesis-research',
+      metadata_json: { workflow: 'hypothesis_research' },
+    });
+    upsertSourceItem({
+      ...base,
+      external_id: 'legacy-source-v1',
+      source: 'reddit',
+      canonical_url: 'https://example.com/legacy',
+      metadata_json: { harvest_score: 1 },
+    });
+    upsertSourceItem({
+      ...base,
+      external_id: 'explicit-legacy-workflow-v1',
+      source: 'public_web',
+      canonical_url: 'https://example.com/legacy-workflow',
+      metadata_json: { workflow: 'legacy' },
+    });
+
+    expect(getUnprocessedItems().map((item) => item.external_id).sort()).toEqual([
+      'explicit-legacy-workflow-v1',
+      'legacy-source-v1',
+    ]);
+  });
+
   it('rolls back all app-state writes when one write fails', async () => {
     const { getDb } = await import('./db.ts');
     const { initSchema } = await import('./schema.ts');

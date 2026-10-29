@@ -154,6 +154,7 @@ export function getUnprocessedItems(limit = 100): SourceItemRow[] {
       `SELECT si.* FROM source_items si
        LEFT JOIN insights i ON i.source_item_id = si.id
        WHERE i.id IS NULL
+         AND COALESCE(json_extract(si.metadata_json, '$.workflow'), '') <> 'hypothesis_research'
        ORDER BY json_extract(si.metadata_json, '$.harvest_score') DESC, si.timestamp_utc DESC
        LIMIT ?`,
     )

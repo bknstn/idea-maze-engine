@@ -35,6 +35,8 @@ export interface ModelResponse<T> {
 }
 
 export interface ModelProvider {
+  /** Adapter-owned token admission bound; null means the adapter cannot enforce a cap. */
+  inputTokenUpperBound?(request: Omit<ModelRequest, "signal">): number | null;
   generateJson<T>(request: ModelRequest): Promise<ModelResponse<T>>;
 }
 

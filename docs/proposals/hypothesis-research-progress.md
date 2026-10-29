@@ -23,16 +23,16 @@ is distinct from an integrated release; partial tasks remain open on GitHub.
 | T13 / #21 | Partially published `457a9f0`: official SDK protocol/auth adapters and synthetic fake-app tests; real application wiring remains open under #21 pending T11 |
 | T15 / #23 | Partially published `310ec19`: frozen 18-fixture corpus (digest below); real-path evaluation runner remains pending under #23 |
 | T09 / #17 | Published `bdb7430`: verified claim assessments and bounded JSON/Markdown result pages |
-| T10 / #18 | Published with this checkpoint: durable coordination, fenced recovery, bounded cancellation and conservative usage accounting |
-| T11 / #19 | Managed-worktree implementation of shared application/runtime and bounded loop in progress |
-| T12 / #20 | CLI core and entrypoint prepared; 26 focused tests passed; final real-runtime wiring awaits T11 |
+| T10 / #18 | Published `9d0450b`: durable coordination, fenced recovery, bounded cancellation and conservative usage accounting |
+| T11 / #19 | Published with this checkpoint: shared application/runtime, bounded collection, verified classification and explicit coverage |
+| T12 / #20 | CLI core and entrypoint prepared; 30 focused tests passed; final real-runtime tests await the accepted T11 ref |
 | T19 / #27, T14 / #22, T16 / #24 | Packaging, cross-interface integration, release docs/checks pending |
 | T17 / #25 | Separately scoped human pilot; participants and explicit data/spend scope still required |
 
 ## Verification
 
-Latest integrated check: `npm run verify` passed TypeScript and **48 test files /
-380 tests**. Spawned-process and loopback SDK tests require local IPC/socket
+Latest integrated check: `npm run verify` passed TypeScript and **51 test files /
+403 tests**. Spawned-process and loopback SDK tests require local IPC/socket
 permission outside the restricted sandbox. Mocked providers and synthetic SQLite
 fixtures are not live research or product-usefulness validation.
 
@@ -69,8 +69,8 @@ platform/libc metadata was preserved. No runtime model defaults were changed.
 
 Read this checkpoint, the contract proposal and repository safety instructions.
 Use fresh Luna xhigh implementation agents; the coordinator reviews before
-acceptance and publishes a separate commit per completed issue. Finish #19,
-then #20/#21 and #23, package #27, verify #22, and complete #24.
+acceptance and publishes a separate commit per completed issue. Finish #20/#21,
+then #23, package #27, verify #22, and complete #24.
 Preserve the separate pilot scope for #25.
 Shared files have one owner at a time; report interface requests before editing.
 
@@ -84,7 +84,7 @@ T11 owns `createResearchApplication(context, options?)` and the synchronous
 `createResearchRuntime(options?)` factory returning context, application, and
 async shutdown. CLI/MCP must use that factory. Follow-ups use unused previewed
 queries and named gaps; assessment is saved once after the bounded collection.
-T11 will mark research originals for exclusion from legacy extraction.
+T11 marks research originals for exclusion from legacy extraction.
 The generic LLM task seam must enforce input/output admission and cancellation
 behind registered adapters, preserving legacy model defaults.
 
@@ -96,6 +96,6 @@ inspecting holdout results; do not tune against the holdout. The corpus digest i
 `13b7ccf965043c8dec05f7189b057308c996de9bd01171fb25dfd141bf517c26`.
 
 No temporary helper scripts were created. Test-created databases/directories are
-cleaned by their fixtures. T10 is integrated and ready for managed-worktree
-archival after publication. T11 and T12 worktrees remain active until integration;
-remove task-created dependency symlinks and archive them after verification.
+cleaned by their fixtures. T10 is archived and its checkout removal verified.
+T11 is integrated and ready for archival after publication. T12 and T13 worktrees
+remain active until integration; remove dependency symlinks and archive them after verification.

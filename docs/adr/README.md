@@ -26,6 +26,7 @@ uses the order of changes on the main branch.
 | [0015: Assess claims from verified evidence and bound report pages](0015-claim-assessments-and-bounded-reports.md) | 2026-10-29 | Accepted |
 | [0016: Require an explicit single-owner HTTP policy](0016-single-owner-http-policy.md) | 2026-10-29 | Accepted |
 | [0017: Own research runs independently of client connections](0017-durable-research-run-ownership.md) | 2026-10-29 | Accepted |
+| [0018: Compose a bounded hypothesis research application](0018-bounded-hypothesis-research-application.md) | 2026-10-29 | Accepted |
 
 The [discovery-gate recalibration proposal](../proposals/discovery-gate-recalibration.md)
 is not an accepted decision and does not describe current policy. Current usage

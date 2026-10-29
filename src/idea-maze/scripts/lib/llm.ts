@@ -18,13 +18,59 @@ export interface LlmRequest {
   systemPrompt: string;
   task: LlmTask;
   userPrompt: string;
+  /** Explicit environment passed by a host factory; provider adapters own its meaning. */
+  environment?: Readonly<Record<string, string | undefined>>;
 }
 
 export interface LlmProviderAdapter {
   readonly displayName: string;
   readonly name: string;
+  /** Required by explicit runtime bindings; legacy adapters remain usable by legacy wrappers. */
+  readonly environmentAware?: true;
+  /** Conservative admission bound for prompt tokens; null/absence means unsupported. */
+  inputTokenUpperBound?(request: LlmRequest): number | null;
   generateJson<T>(request: LlmRequest): Promise<T>;
-  isConfigured(): boolean;
+  isConfigured(environment?: Readonly<Record<string, string | undefined>>): boolean;
+}
+
+export interface LlmTaskJsonRequest {
+  task: LlmTask;
+  systemPrompt: string;
+  userPrompt: string;
+  maxInputTokens: number;
+  maxOutputTokens: number;
+  signal: AbortSignal;
+  environment?: Readonly<Record<string, string | undefined>>;
+}
+
+export type LlmTaskJsonInputRequest = Pick<LlmTaskJsonRequest,
+  "task" | "systemPrompt" | "userPrompt" | "maxOutputTokens" | "environment">;
+
+export interface LlmTaskJsonUsage {
+  inputTokens: null;
+  outputTokens: null;
+  costMicros: null;
+}
+
+export interface LlmTaskJsonResponse<T> {
+  value: T;
+  usage: LlmTaskJsonUsage;
+}
+
+export class LlmInputBudgetError extends Error {
+  constructor(readonly reason: "unsupported" | "exceeded") {
+    super(reason === "unsupported"
+      ? "The configured model adapter cannot enforce an input-token budget."
+      : "The model prompt exceeds the configured input-token budget.");
+    this.name = "LlmInputBudgetError";
+  }
+}
+
+export class LlmEnvironmentBindingError extends Error {
+  constructor() {
+    super("The configured model adapter cannot honor an explicit runtime environment.");
+    this.name = "LlmEnvironmentBindingError";
+  }
 }
 
 const DEFAULT_MODELS: Record<LlmTask, string> = {
@@ -63,9 +109,13 @@ function extractJson<T>(text: string): T {
 const openAiProvider: LlmProviderAdapter = {
   name: "openai",
   displayName: "OpenAI",
-  isConfigured: () => Boolean(process.env.OPENAI_API_KEY),
+  environmentAware: true,
+  isConfigured: (environment = process.env) => Boolean(environment.OPENAI_API_KEY),
+  inputTokenUpperBound: (request) => openAiInputTokenUpperBound(request),
   async generateJson<T>(request: LlmRequest): Promise<T> {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = request.environment === undefined
+      ? process.env.OPENAI_API_KEY
+      : request.environment.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY not set");
 
     const res = await fetch(OPENAI_API_URL, {
@@ -110,34 +160,68 @@ export function registerLlmProvider(adapter: LlmProviderAdapter): void {
 
 registerLlmProvider(openAiProvider);
 
-function selectedProviderName(): string {
-  return process.env.IDEA_MAZE_LLM_PROVIDER?.trim() || "openai";
+function selectedProviderName(environment: Readonly<Record<string, string | undefined>> = process.env): string {
+  return environment.IDEA_MAZE_LLM_PROVIDER?.trim() || "openai";
 }
 
-function selectedProvider(): LlmProviderAdapter | null {
-  return providerRegistry.get(selectedProviderName()) ?? null;
+function selectedProvider(environment: Readonly<Record<string, string | undefined>> = process.env): LlmProviderAdapter | null {
+  return providerRegistry.get(selectedProviderName(environment)) ?? null;
 }
 
-export function getConfiguredProvider(): string | null {
-  const provider = selectedProvider();
-  return provider?.isConfigured() ? provider.name : null;
+export function getConfiguredProvider(environment?: Readonly<Record<string, string | undefined>>): string | null {
+  const effectiveEnvironment = environment ?? process.env;
+  const provider = selectedProvider(effectiveEnvironment);
+  if (environment !== undefined && provider?.environmentAware !== true) return null;
+  return provider?.isConfigured(effectiveEnvironment) ? provider.name : null;
+}
+
+export function getLlmProviderAvailability(
+  environment?: Readonly<Record<string, string | undefined>>,
+): "available" | "not_configured" | "unavailable" {
+  const effectiveEnvironment = environment ?? process.env;
+  const provider = selectedProvider(effectiveEnvironment);
+  if (!provider) return "unavailable";
+  if (environment !== undefined && provider.environmentAware !== true) return "unavailable";
+  return provider.isConfigured(effectiveEnvironment) ? "available" : "not_configured";
+}
+
+/** Ask the selected registered adapter to bound this exact task prompt without dispatching it. */
+export function getTaskJsonInputTokenUpperBound(request: LlmTaskJsonInputRequest): number | null {
+  if (!request || typeof request !== "object" ||
+      !["extraction", "research", "exploration"].includes(request.task) ||
+      typeof request.systemPrompt !== "string" || typeof request.userPrompt !== "string" ||
+      !Number.isSafeInteger(request.maxOutputTokens) || request.maxOutputTokens < 1) return null;
+  const environment = request.environment ?? process.env;
+  const provider = selectedProvider(environment);
+  if (!provider?.isConfigured(environment) ||
+      (request.environment !== undefined && provider.environmentAware !== true)) return null;
+  const providerRequest: LlmRequest = {
+    task: request.task,
+    model: getModel(request.task, environment),
+    systemPrompt: request.systemPrompt,
+    userPrompt: request.userPrompt,
+    maxTokens: request.maxOutputTokens,
+    environment,
+  };
+  const upperBound = provider.inputTokenUpperBound?.(providerRequest);
+  return Number.isSafeInteger(upperBound) && (upperBound as number) >= 0 ? upperBound as number : null;
 }
 
 export function isLlmConfigured(): boolean {
   return getConfiguredProvider() !== null;
 }
 
-export function getMissingLlmReason(): string {
-  const providerName = selectedProviderName();
-  const provider = selectedProvider();
+export function getMissingLlmReason(environment: Readonly<Record<string, string | undefined>> = process.env): string {
+  const providerName = selectedProviderName(environment);
+  const provider = selectedProvider(environment);
   if (!provider) {
     return `LLM provider "${providerName}" is not registered`;
   }
   return `LLM provider "${providerName}" is not configured`;
 }
 
-export function getModel(task: LlmTask): string {
-  return process.env[MODEL_ENV[task]]?.trim() || DEFAULT_MODELS[task];
+export function getModel(task: LlmTask, environment: Readonly<Record<string, string | undefined>> = process.env): string {
+  return environment[MODEL_ENV[task]]?.trim() || DEFAULT_MODELS[task];
 }
 
 export function getExtractionModel(): string | null {
@@ -164,7 +248,7 @@ async function callApi<T>(
   timeoutMs?: number,
 ): Promise<T> {
   const provider = selectedProvider();
-  if (!provider?.isConfigured()) throw new Error(getMissingLlmReason());
+  if (!provider?.isConfigured(process.env)) throw new Error(getMissingLlmReason());
 
   const controller = timeoutMs ? new AbortController() : null;
   const timeoutId = controller
@@ -190,6 +274,79 @@ async function callApi<T>(
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
+}
+
+/**
+ * Provider-neutral bounded task routing for research services. It preserves
+ * the task-specific model defaults and registered adapter boundary, propagates
+ * the service-owned signal, and refuses dispatch unless the selected adapter
+ * can admit the prompt beneath the supplied input-token ceiling. Providers do
+ * not currently expose observed usage through the legacy adapter interface, so
+ * all usage fields remain unknown rather than being estimated.
+ */
+export async function generateTaskJson<T>(request: LlmTaskJsonRequest): Promise<LlmTaskJsonResponse<T>> {
+  if (!request || typeof request !== "object" ||
+      !["extraction", "research", "exploration"].includes(request.task) ||
+      typeof request.systemPrompt !== "string" || typeof request.userPrompt !== "string" ||
+      !Number.isSafeInteger(request.maxInputTokens) || request.maxInputTokens < 1 ||
+      !Number.isSafeInteger(request.maxOutputTokens) || request.maxOutputTokens < 1 ||
+      !request.signal || typeof request.signal.aborted !== "boolean") {
+    throw new TypeError("A bounded task request with prompts, token limits, and signal is required");
+  }
+  if (request.signal.aborted) throw request.signal.reason ?? new DOMException("Aborted", "AbortError");
+
+  const hasExplicitEnvironment = request.environment !== undefined;
+  const environment = request.environment ?? process.env;
+  const provider = selectedProvider(environment);
+  if (!provider?.isConfigured(environment)) throw new Error(getMissingLlmReason(environment));
+  if (hasExplicitEnvironment && provider.environmentAware !== true) throw new LlmEnvironmentBindingError();
+
+  const inputBoundRequest = {
+    task: request.task,
+    systemPrompt: request.systemPrompt,
+    userPrompt: request.userPrompt,
+    maxOutputTokens: request.maxOutputTokens,
+    ...(request.environment === undefined ? {} : { environment: request.environment }),
+  };
+  const upperBound = getTaskJsonInputTokenUpperBound(inputBoundRequest);
+  if (upperBound === null) {
+    throw new LlmInputBudgetError("unsupported");
+  }
+  if (upperBound > request.maxInputTokens) throw new LlmInputBudgetError("exceeded");
+  if (request.signal.aborted) throw request.signal.reason ?? new DOMException("Aborted", "AbortError");
+
+  const providerRequest: LlmRequest = {
+    task: request.task,
+    model: getModel(request.task, environment),
+    systemPrompt: request.systemPrompt,
+    userPrompt: request.userPrompt,
+    maxTokens: request.maxOutputTokens,
+    signal: request.signal,
+    ...(request.environment === undefined ? {} : { environment }),
+  };
+  const value = await provider.generateJson<T>(providerRequest);
+  return {
+    value,
+    usage: { inputTokens: null, outputTokens: null, costMicros: null },
+  };
+}
+
+/**
+ * In the standard two-message JSON request shape, each prompt's byte sequence
+ * is an upper bound on its byte-level BPE token count. Add a deliberately large
+ * fixed allowance for message framing and the assistant prefix. This provider
+ * adapter must revisit the allowance if it adds message metadata, tools, or a
+ * different request shape; unknown API usage remains unreported.
+ */
+function openAiInputTokenUpperBound(request: LlmRequest): number {
+  const promptEnvelope = JSON.stringify([
+    { role: "system", content: request.systemPrompt },
+    { role: "user", content: request.userPrompt },
+  ]);
+  const promptBytes = Buffer.byteLength(promptEnvelope, "utf8");
+  const messageFramingAllowance = 1_024;
+  const bound = promptBytes + messageFramingAllowance;
+  return Number.isSafeInteger(bound) ? bound : Number.MAX_SAFE_INTEGER;
 }
 
 /** Single-item extraction using the configured extraction model. */
