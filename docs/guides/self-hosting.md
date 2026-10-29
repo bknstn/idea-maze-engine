@@ -128,7 +128,10 @@ has been checked.
 `node --test deploy/data-transfer.test.mjs` exercises synthetic WAL snapshots,
 restore, corrupt database rejection, stale sidecars, and symlink rejection.
 `node deploy/smoke-test.mjs` builds the pinned image and runs Compose with an
-isolated, network-restricted synthetic fixture. It checks authentication,
+offline mocked provider calls. The smoke uses the normal Compose bridge so its
+published TLS endpoint can be reached from the host. A test-only preload returns
+empty synthetic search results and rejects other provider fetch destinations;
+the run has no real model credentials. It checks authentication,
 disconnect/reconnect, graceful interruption, restart persistence, and a
 synthetic backup/restore round trip. The smoke run requires Docker Engine,
 Docker Compose v2, OpenSSL, and access to pull the pinned base and proxy images;

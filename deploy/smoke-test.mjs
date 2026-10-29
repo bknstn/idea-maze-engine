@@ -110,10 +110,22 @@ try {
   runDocker([...dockerCompose, "up", "-d", "--wait"], { inherit: true });
 
   const serviceUrl = new URL(`https://127.0.0.1:${smokePort}/mcp`);
-  await waitFor(async () => {
-    const response = await fetchOverHttps(new URL(healthPath, serviceUrl));
-    return response.status === 200;
-  }, 30_000, "TLS proxy and loopback service to become ready");
+  let lastReadinessObservation = "no response";
+  try {
+    await waitFor(async () => {
+      try {
+        const response = await fetchOverHttps(new URL(healthPath, serviceUrl));
+        lastReadinessObservation = `HTTP ${response.status}`;
+        return response.status === 200;
+      } catch (error) {
+        const code = typeof error?.code === "string" && /^[A-Z0-9_]{1,40}$/.test(error.code) ? error.code : "";
+        lastReadinessObservation = code ? `request error ${code}` : "request error";
+        return false;
+      }
+    }, 30_000, "TLS proxy and loopback service to become ready");
+  } catch (error) {
+    throw new Error(`${error.message} Last readiness probe: ${lastReadinessObservation}.`);
+  }
 
   const appContainer = composeValue(["ps", "-q", "idea-maze"]);
   const userAndRootMode = runDocker(["inspect", "--format", "{{.Config.User}} {{.HostConfig.ReadonlyRootfs}}", appContainer], { capture: true }).stdout.trim();
